@@ -92,28 +92,33 @@ All quality gates passed locally with exit code `0` immediately prior to remote 
 
 ---
 
-## 7. GitHub Actions CI Execution & Blocker Finding
+## 7. GitHub Actions CI Execution & Recovery Findings
 
 Upon pushing to `main`, GitHub Actions automatically triggered the workflow defined in `.github/workflows/ci.yml`.
 
 ### Workflow Run Details
 - **Workflow Name:** `CI Pipeline`
-- **Workflow Run ID:** `43742469140`
-- **Workflow Run URL:** [https://github.com/asmkhalid111/portfolio/actions/runs/43742469140](https://github.com/asmkhalid111/portfolio/actions/runs/43742469140)
-- **Triggered Commit:** `5a2a117fde783a57a15eb939385ecd45d497a300`
-- **Job Name:** `Lint, Typecheck, Test & Build` (Job ID: `132898423320`)
+- **Initial Run ID:** `43742469140` (Job ID: `132898423320`)
+- **Documentation Push Run ID:** `43742711733` (Initial Job ID: `132899173492`)
+- **Workflow Run URL:** [https://github.com/asmkhalid111/portfolio/actions/runs/43742711733](https://github.com/asmkhalid111/portfolio/actions/runs/43742711733)
+- **Target Commit SHA:** `866571042b3fb1d58363f6d911be40917b205063`
+- **Job Name:** `Lint, Typecheck, Test & Build`
+
+### CI Recovery & Rerun Attempt (Gate B2 Verification)
+- **Rerun Command Executed:** `gh run rerun 43742711733 --repo asmkhalid111/portfolio`
+- **Rerun Attempt Job ID:** `132908047611`
+- **Rerun Conclusion:** Failure (Runner not started).
+- **GitHub Actions Annotation:**
+  ```
+  ANNOTATIONS
+  X The job was not started because your account is locked due to a billing issue.
+  Lint, Typecheck, Test & Build: .github#1
+  ```
 
 ### Failure Diagnostics & Root Cause
-Inspection via `gh run view 43742469140 --repo asmkhalid111/portfolio` revealed:
-
-```
-ANNOTATIONS
-X The job was not started because your account is locked due to a billing issue.
-Lint, Typecheck, Test & Build: .github#1
-```
-
-- **Root Cause:** The failure is an **account-level GitHub Actions platform block** on the owner's GitHub account (`asmkhalid111`), not an application, configuration, or test defect. GitHub Actions refused to start runner execution because the GitHub account is locked due to a billing issue (e.g. an outstanding invoice, expired payment method, or $0 spending limit on Actions minutes).
+- **Root Cause:** The failure is an **external account-level GitHub Actions platform block** on the owner's GitHub account (`asmkhalid111`), not an application, configuration, or test defect. GitHub Actions refused to start runner execution because the GitHub account is locked due to a billing issue (e.g. an outstanding balance, expired payment method, or $0 spending limit on Actions minutes).
 - **Application Validation Contrast:** All CI steps (`npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run test:e2e`) pass 100% locally with zero errors.
+- **Operating Invariant Followed:** Per instructions, because the account remains locked, the agent did not repeatedly rerun the workflow, did not alter CI configurations to bypass checks, and did not attempt any payment operations.
 
 ---
 
@@ -125,9 +130,9 @@ To unlock GitHub Actions CI runners for the repository:
 2. Review the **Payment information** and **Billing overview** sections.
 3. If an outstanding balance or expired card is shown, update the payment method or settle the balance.
 4. If a spending limit on GitHub Actions is active, check the spending limit setting under **Actions & Packages**.
-5. Once the account lock is cleared, re-run the failed GitHub Actions job directly via:
+5. Once the account lock is cleared by GitHub, re-run the workflow directly via:
    ```powershell
-   gh run rerun 43742469140 --repo asmkhalid111/portfolio
+   gh run rerun 43742711733 --repo asmkhalid111/portfolio
    ```
    Or trigger a new run on push.
 
@@ -137,7 +142,7 @@ To unlock GitHub Actions CI runners for the repository:
 
 - **Completed Deliverables:**
   - Public repository created at [https://github.com/asmkhalid111/portfolio](https://github.com/asmkhalid111/portfolio).
-  - Sanitized `main` branch pushed successfully.
+  - Sanitized `main` branch pushed successfully (`8665710`).
   - Zero private email occurrences in commit headers or file bodies.
   - CI workflow configured on Node 26 with browser dependencies.
 - **Current Blocker:** Gate B2 cannot be declared fully accepted until the GitHub account billing lock is resolved by the Project Owner and a green CI run is confirmed.

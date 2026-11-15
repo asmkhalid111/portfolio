@@ -84,13 +84,13 @@ Commit SHA: 15320cf
 
 ```
 ERR-006 | M01 Gate B2 | 2026-11-15 17:41 UTC | Severity: High
-Symptom: GitHub Actions workflow run 43742469140 failed immediately with annotation: "The job was not started because your account is locked due to a billing issue."
-Reproduction: Push commit 5a2a117 to asmkhalid111/portfolio on branch main.
+Symptom: GitHub Actions workflow runs (43742469140, 43742711733) failed immediately with annotation: "The job was not started because your account is locked due to a billing issue."
+Reproduction: Push commit to asmkhalid111/portfolio on branch main, or run gh run rerun 43742711733.
 Root Cause: External account-level platform lock on the owner's GitHub account (asmkhalid111); runner did not execute. Local validation suite passes 100%.
-Resolution: Documented owner billing resolution runbook; requires Project Owner to visit https://github.com/settings/billing to resolve account lock and re-run workflow.
-Verification Evidence: gh run view 43742469140 annotations.
+Resolution: Documented owner billing resolution runbook; requires Project Owner to visit https://github.com/settings/billing to resolve account lock and re-run workflow. Rerun attempt 2 (job ID 132908047611) confirmed account remains locked.
+Verification Evidence: gh run view 43742469140 and gh run view 43742711733 annotations.
 Status: Active (Blocked on Owner Account Resolution)
-Commit SHA: 5a2a117
+Commit SHA: 8665710
 ```
 
 ### Incident Report Template (For Post-M01 Use)

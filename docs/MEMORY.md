@@ -51,8 +51,8 @@
   - Gate B2 Status: **REPOSITORY CREATED & PUSHED — CI BLOCKED ON GITHUB BILLING**.
   - GitHub Remote: `https://github.com/asmkhalid111/portfolio` (public, tracked to `origin/main`).
   - Verified Git Author: `Ashrafuzzaman Khalid <130174468+asmkhalid111@users.noreply.github.com>`.
-  - Pushed Commit: `5a2a117` (clean history, zero personal email occurrences).
-  - CI Run: `https://github.com/asmkhalid111/portfolio/actions/runs/43742469140` (Job not started: account locked due to billing issue).
+  - Pushed Commit: `8665710` (clean history, zero personal email occurrences).
+  - CI Run: `https://github.com/asmkhalid111/portfolio/actions/runs/43742711733` (Rerun attempt executed: job not started due to GitHub account billing lock).
   - Reports: `docs/milestones/M01-foundation/GATE_A_REPORT.md`, `GATE_B_LOCAL_REPORT.md`, `GATE_B_PRIVACY_REPORT.md`, and `GATE_B_GITHUB_REPORT.md`.
 
 ---
@@ -60,6 +60,6 @@
 ## 4. Next Actions
 
 1. Project Owner resolves the account-level billing lock at `https://github.com/settings/billing`.
-2. Re-run GitHub Actions CI workflow `43742469140` or trigger via push to achieve a verified green CI badge.
+2. Re-run GitHub Actions CI workflow `43742711733` to achieve a verified green CI badge.
 3. Independent audit of Gate B2 completion by ChatGPT.
 4. Subsequent Project Owner authorization for Gate C (Vercel deployment).
