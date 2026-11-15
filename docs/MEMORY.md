@@ -1,13 +1,15 @@
 # Project Memory — Durable State & Architecture Context
 
 > **Last Updated:** 2026-11-16  
-> **Current State:** **M01 GATE B COMPLETED (CI EXCEPTION APPROVED) — GATE C DEPLOYMENT PREPARED (Awaiting Project Owner Authorization)**  
-> **Active Milestone:** `docs/milestones/M01-foundation/PLAN.md` (v0.5)  
+> **Current State:** **M01 COMPLETED & FINALIZED — RELEASE TAG m01-complete TARGETING 699cfd0 — NEXT: M02 PLANNING**  
+> **Active Milestone:** `docs/milestones/M01-foundation/COMPLETION.md` (Accepted & Closed)  
 > **Gate A Report:** `docs/milestones/M01-foundation/GATE_A_REPORT.md` (Accepted by ChatGPT)  
 > **Gate B1 Report:** `docs/milestones/M01-foundation/GATE_B_LOCAL_REPORT.md` (Accepted by ChatGPT)  
 > **Gate B2A Report:** `docs/milestones/M01-foundation/GATE_B_PRIVACY_REPORT.md` (History Sanitization Verified)  
 > **Gate B2 Report:** `docs/milestones/M01-foundation/GATE_B_GITHUB_REPORT.md` (Repository Published, CI Blocked)  
-> **Gate C Preparation:** `docs/milestones/M01-foundation/GATE_C_PREPARATION.md` (Deployment Checklist & CI Waiver)
+> **Gate C Preparation:** `docs/milestones/M01-foundation/GATE_C_PREPARATION.md` (Deployment Checklist & CI Waiver)  
+> **Gate C Report:** `docs/milestones/M01-foundation/GATE_C_DEPLOYMENT_REPORT.md` (Live Deployment Verified)  
+> **M01 Completion Report:** `docs/milestones/M01-foundation/COMPLETION.md` (Milestone Finalized)
 
 ---
 
@@ -52,17 +54,21 @@
   - Gate B2 Status: **REPOSITORY CREATED & PUSHED — CI EXCEPTION APPROVED (ADR-009)**.
   - GitHub Remote: `https://github.com/asmkhalid111/portfolio` (public, tracked to `origin/main`).
   - Verified Git Author: `Ashrafuzzaman Khalid <130174468+asmkhalid111@users.noreply.github.com>`.
-  - Pushed Baseline Commit: `e2102d9` (clean history, zero personal email occurrences).
+  - Pushed Baseline Commit: `699cfd0` (clean history, zero personal email occurrences).
   - CI Status: GitHub Actions runner refused due to account billing lock (`ERR-006`); controlled exception granted waiving CI badge as blocking gate; workflow retained intact; 12-point alternative verification protocol in effect.
-  - Gate C Preparation: `docs/milestones/M01-foundation/GATE_C_PREPARATION.md` (ready for deployment upon explicit owner authorization).
-  - Reports: `docs/milestones/M01-foundation/GATE_A_REPORT.md`, `GATE_B_LOCAL_REPORT.md`, `GATE_B_PRIVACY_REPORT.md`, `GATE_B_GITHUB_REPORT.md`, and `GATE_C_PREPARATION.md`.
+  - Gate C Status: **DEPLOYED & EMPIRICALLY VERIFIED**.
+  - Production Deployment URL: `https://portfolio-rust-nu-n7jcvs7adw.vercel.app`
+  - Live Playwright Tests: 24/24 assertions passed (100% success rate across Desktop and Mobile viewports).
+  - Milestone Finalization: **ACCEPTED & CLOSED**.
+  - Verified Release Tag: `m01-complete` targeting application source commit `699cfd0dc0bf43621d62eb0a969f5d0ac8f73d1b`.
+  - Completion Report: `docs/milestones/M01-foundation/COMPLETION.md`.
+  - Reports: `docs/milestones/M01-foundation/GATE_A_REPORT.md`, `GATE_B_LOCAL_REPORT.md`, `GATE_B_PRIVACY_REPORT.md`, `GATE_B_GITHUB_REPORT.md`, `GATE_C_PREPARATION.md`, `GATE_C_DEPLOYMENT_REPORT.md`, and `COMPLETION.md`.
 
 ---
 
 ## 4. Next Actions
 
-1. Await explicit Project Owner authorization for M01 Gate C (Vercel deployment).
-2. Connect `asmkhalid111/portfolio` to Vercel Hobby, verify Node.js 26 runtime, deploy the approved foundation shell, and verify live HTTPS URL.
-3. Perform live production smoke test (desktop & mobile).
-4. Author `docs/milestones/M01-foundation/COMPLETION.md` and submit to ChatGPT for milestone completion audit.
-5. Project Owner resolves GitHub billing lock at leisure; runner will automatically resume when unlocked.
+1. Await ChatGPT final release audit of Milestone M01.
+2. Initiate Milestone M02 (Database Integration & RLS Foundation) planning: draft `docs/milestones/M02-database/PLAN.md`.
+3. Project Owner provisions Supabase cloud project upon explicit M02 planning authorization.
+4. Prepare M02 feature branch: `feat/m02-database`. Do not implement code or migrations prior to explicit owner authorization.
