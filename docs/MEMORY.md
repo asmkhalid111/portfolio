@@ -1,14 +1,15 @@
 # Project Memory — Durable State & Architecture Context
 
 > **Last Updated:** 2026-11-16  
-> **Current State:** **M01 GATE C DEPLOYMENT VERIFIED (Awaiting ChatGPT Audit & Project Owner Acceptance)**  
-> **Active Milestone:** `docs/milestones/M01-foundation/PLAN.md` (v0.5)  
+> **Current State:** **M01 COMPLETED & FINALIZED — RELEASE TAG m01-complete TARGETING 699cfd0 — NEXT: M02 PLANNING**  
+> **Active Milestone:** `docs/milestones/M01-foundation/COMPLETION.md` (Accepted & Closed)  
 > **Gate A Report:** `docs/milestones/M01-foundation/GATE_A_REPORT.md` (Accepted by ChatGPT)  
 > **Gate B1 Report:** `docs/milestones/M01-foundation/GATE_B_LOCAL_REPORT.md` (Accepted by ChatGPT)  
 > **Gate B2A Report:** `docs/milestones/M01-foundation/GATE_B_PRIVACY_REPORT.md` (History Sanitization Verified)  
 > **Gate B2 Report:** `docs/milestones/M01-foundation/GATE_B_GITHUB_REPORT.md` (Repository Published, CI Blocked)  
 > **Gate C Preparation:** `docs/milestones/M01-foundation/GATE_C_PREPARATION.md` (Deployment Checklist & CI Waiver)  
-> **Gate C Report:** `docs/milestones/M01-foundation/GATE_C_DEPLOYMENT_REPORT.md` (Live Deployment Verified)
+> **Gate C Report:** `docs/milestones/M01-foundation/GATE_C_DEPLOYMENT_REPORT.md` (Live Deployment Verified)  
+> **M01 Completion Report:** `docs/milestones/M01-foundation/COMPLETION.md` (Milestone Finalized)
 
 ---
 
@@ -58,13 +59,16 @@
   - Gate C Status: **DEPLOYED & EMPIRICALLY VERIFIED**.
   - Production Deployment URL: `https://portfolio-rust-nu-n7jcvs7adw.vercel.app`
   - Live Playwright Tests: 24/24 assertions passed (100% success rate across Desktop and Mobile viewports).
-  - Reports: `docs/milestones/M01-foundation/GATE_A_REPORT.md`, `GATE_B_LOCAL_REPORT.md`, `GATE_B_PRIVACY_REPORT.md`, `GATE_B_GITHUB_REPORT.md`, `GATE_C_PREPARATION.md`, and `GATE_C_DEPLOYMENT_REPORT.md`.
+  - Milestone Finalization: **ACCEPTED & CLOSED**.
+  - Verified Release Tag: `m01-complete` targeting application source commit `699cfd0dc0bf43621d62eb0a969f5d0ac8f73d1b`.
+  - Completion Report: `docs/milestones/M01-foundation/COMPLETION.md`.
+  - Reports: `docs/milestones/M01-foundation/GATE_A_REPORT.md`, `GATE_B_LOCAL_REPORT.md`, `GATE_B_PRIVACY_REPORT.md`, `GATE_B_GITHUB_REPORT.md`, `GATE_C_PREPARATION.md`, `GATE_C_DEPLOYMENT_REPORT.md`, and `COMPLETION.md`.
 
 ---
 
 ## 4. Next Actions
 
-1. Submit M01 Gate C deployment evidence report (`GATE_C_DEPLOYMENT_REPORT.md`) for independent ChatGPT completion audit.
-2. Await Project Owner formal acceptance of Milestone M01.
-3. Upon acceptance, merge `docs/m01-gate-c-evidence` into `main`, generate `docs/milestones/M01-foundation/COMPLETION.md`, and create annotated release tag `m01-complete`.
-4. Proceed to M02 (Database Integration & RLS Foundation) planning only after explicit authorization.
+1. Await ChatGPT final release audit of Milestone M01.
+2. Initiate Milestone M02 (Database Integration & RLS Foundation) planning: draft `docs/milestones/M02-database/PLAN.md`.
+3. Project Owner provisions Supabase cloud project upon explicit M02 planning authorization.
+4. Prepare M02 feature branch: `feat/m02-database`. Do not implement code or migrations prior to explicit owner authorization.

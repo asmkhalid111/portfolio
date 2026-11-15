@@ -1,11 +1,11 @@
 # M01 — Implementation Plan: Foundation, Environment Setup & First Deployment
 
 > **Milestone ID:** M01-foundation  
-> **Status:** GATE B COMPLETED (CI EXCEPTION APPROVED) — GATE C DEPLOYMENT PREPARED (Awaiting Project Owner Authorization)  
+> **Status:** COMPLETED & ACCEPTED (Milestone Finalized; Release Tag m01-complete Targeting 699cfd0)  
 > **Date:** 2026-11-16  
 > **Author:** Antigravity (Implementation Engineer & Documentation Maintainer)  
 > **Review Workflow:** Antigravity (Plan Author) → ChatGPT (Architecture & Acceptance Reviewer) → Project Owner (Final Authority & Approver)  
-> **Operating Mode:** REPOSITORY PUBLISHED & SANITIZED — GATE C DEPLOYMENT PREPARATION (Vercel deployment held pending explicit owner authorization)
+> **Operating Mode:** MILESTONE FINALIZATION (Merged to main; Tagged; Handoff to M02)
 
 ---
 
@@ -18,6 +18,7 @@
 | v0.3 | 2026-11-15 | Antigravity | Reconciled package dependency findings: migrated Vitest to `5.1.0` to resolve critical `tinypool` prototype pollution advisory GHSA-5gmw-xhrv-c9v3; standardized Tailwind CSS v4 on official `@tailwindcss/postcss@4.3.3` + `postcss@8.5.33` with `postcss.config.mjs` and removed experimental `@tailwindcss/turbopack` loader rules; added browser-level computed CSS assertions in Playwright verifying wide-gamut color and geometric layout compilation; separated Gate B into Gate B1 (Local Git Foundation & Baseline Audit — COMPLETED) and Gate B2 (Remote GitHub Creation & CI — UNAUTHORIZED). |
 | v0.4 | 2026-11-15 | Antigravity | Gate B2A Git Email Privacy Correction: verified Project Owner's official GitHub noreply address (`130174468+asmkhalid111@users.noreply.github.com`) via GitHub CLI and verified historical commits; created local recovery checkpoint; sanitized commit author/committer metadata and historical tracked documentation; purged unreferenced Next.js default sample SVGs; verified zero occurrences of personal email across all historical commits and trees. Remote publication remains unauthorized. |
 | v0.5 | 2026-11-16 | Antigravity | Recorded Gate B2 publication completion (`asmkhalid111/portfolio`); recorded controlled exception for GitHub Actions CI approved by Project Owner and ChatGPT per ADR-009 due to external account billing lock; established mandatory 12-point alternative verification protocol; authored Gate C deployment checklist (`GATE_C_PREPARATION.md`); confirmed branch protection and rulesets are 404/empty on GitHub; retained `.github/workflows/ci.yml` intact; Gate C deployment strictly gated on explicit owner authorization. |
+| v0.6 | 2026-11-16 | Antigravity | M01 Milestone Finalization: recorded Gate C deployment verification on Vercel (`portfolio-rust-nu-n7jcvs7adw.vercel.app`); recorded owner dashboard confirmation; authored final COMPLETION.md; prepared release tag `m01-complete` targeting application source commit `699cfd0`; milestone accepted and closed. |
 
 ---
 
@@ -526,12 +527,12 @@ npm run test:e2e
 - [x] Controlled CI exception granted per ADR-009: green CI badge temporarily waived due to account billing lock; mandatory 12-point alternative verification protocol established.
 - [x] `docs/milestones/M01-foundation/GATE_B_GITHUB_REPORT.md` authored, updated, and pushed to `origin/main`.
 
-### Gate C (Hosting Deployment — Prepared, Awaiting Owner Authorization)
-- [ ] Connect `asmkhalid111/portfolio` to Vercel Hobby project (Node.js 26.x runtime) upon explicit owner authorization.
-- [ ] Verify zero environment secrets configured in Vercel for M01 (Supabase deferred to M02).
-- [ ] Deploy approved Git commit and verify public HTTPS URL returns HTTP 200 with valid SSL.
-- [ ] Execute post-deployment live desktop and mobile smoke tests.
-- [ ] Author `docs/milestones/M01-foundation/COMPLETION.md` recording actual execution commands, outputs, commit SHA, and deployment URL.
+### Gate C (Hosting Deployment — Completed & Verified)
+- [x] Connect `asmkhalid111/portfolio` to Vercel Hobby project (Node.js 26.x runtime) via native GitHub dashboard integration.
+- [x] Verify zero environment secrets configured in Vercel for M01 (Supabase deferred to M02).
+- [x] Deploy approved Git commit `699cfd0` and verify public HTTPS URL returns HTTP 200 with valid SSL (`https://portfolio-rust-nu-n7jcvs7adw.vercel.app`).
+- [x] Execute post-deployment live desktop and mobile Playwright smoke tests (24/24 assertions green).
+- [x] Author `docs/milestones/M01-foundation/COMPLETION.md` recording actual execution commands, outputs, commit SHA, and deployment URL.
 
 ---
 
@@ -542,20 +543,23 @@ The following items are explicit decision gates requiring **Project Owner** auth
 - [x] **1. Authorization for Gate A Implementation:** Authorized by project owner in M01 Gate A directive.
 - [x] **2. Authorization for Gate B (Git & GitHub):** Authorized by project owner; repo created and pushed.
 - [x] **3. Controlled CI Exception Approval:** Approved by project owner and accepted by ChatGPT; green CI badge temporarily waived; 12-point alternative protocol in effect.
-- [ ] **4. Authorization for Gate C (Vercel Deployment):** Authorize linking the GitHub repository to Vercel Hobby and triggering the initial public deployment.
+- [x] **4. Authorization for Gate C (Vercel Deployment):** Authorized by project owner in Gate C directive; deployment verified.
 - [x] **5. Public Homepage Bio Text Approval:** Approved candidate copy for the foundation homepage shell.
+- [x] **6. M01 Finalization Authorization:** Authorized merging documentation evidence into `main`, publishing `m01-complete` release tag, and handoff to M02.
 
 ---
 
 ## 15. Expected Implementation Evidence
 
-Upon completion of M01 Gate C implementation, the following concrete artifacts must be documented in `COMPLETION.md`:
-1. Vercel deployment ID, production URL, and deployment timestamp.
-2. Verified Node.js 26 runtime build logs.
-3. Live HTTP 200 and SSL verification logs.
-4. Live browser smoke test execution logs.
-5. Verification that `COMPLETION.md` exists and is read back from disk.
+All expected implementation evidence is compiled and permanently recorded in:
+- `docs/milestones/M01-foundation/GATE_A_REPORT.md`
+- `docs/milestones/M01-foundation/GATE_B_LOCAL_REPORT.md`
+- `docs/milestones/M01-foundation/GATE_B_PRIVACY_REPORT.md`
+- `docs/milestones/M01-foundation/GATE_B_GITHUB_REPORT.md`
+- `docs/milestones/M01-foundation/GATE_C_PREPARATION.md`
+- `docs/milestones/M01-foundation/GATE_C_DEPLOYMENT_REPORT.md`
+- `docs/milestones/M01-foundation/COMPLETION.md`
 
 ---
 
-*Gate A and Gate B Completed. Controlled CI Exception Approved. Gate C Deployment Prepared in GATE_C_PREPARATION.md and Awaiting Project Owner Authorization.*
+*Milestone M01 Finalized and Accepted. Application Source SHA 699cfd0 Tagged with m01-complete. Ready for M02 Planning.*

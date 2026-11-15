@@ -37,11 +37,11 @@ The table below distinguishes **empirically verified** properties from **unverif
 | **Project ID (`prj_*`)** | **UNVERIFIED via CLI** | Not accessible via public HTTP or unauthenticated CLI; requires Dashboard inspection. |
 | **Deployment ID (`dpl_*`)** | **UNVERIFIED via CLI** | Not accessible via public HTTP or unauthenticated CLI; requires Dashboard inspection. |
 | **Edge Request ID** | `bom1::qmldf-1794773783472-9a4fcb12e793` | **VERIFIED:** Captured from `X-Vercel-Id` header (Edge routing trace; **NOT** a deployment ID). |
-| **Deployment Environment** | **UNVERIFIED via CLI** (Production vs Preview) | The URL contains an immutable deployment hash (`-n7jcvs7adw`). Formal environment classification requires Dashboard confirmation. |
+| **Deployment Environment** | **OWNER-VERIFIED DASHBOARD EVIDENCE:** `Production` | Confirmed by Project Owner via direct Vercel Dashboard inspection; serves production traffic. |
 | **Deployment Health Status** | **VERIFIED (READY / SERVING)** | Edge server returns HTTP 200 with cached prerendered HTML (`X-Vercel-Cache: HIT`). |
 | **GitHub Repository Linkage** | `asmkhalid111/portfolio` | Connected via Vercel dashboard; GitHub deployments API returns `[]` (App-level integration). |
-| **Git Source Branch** | `main` | Default GitHub repository branch; exact build trigger branch is **UNVERIFIED via CLI**. |
-| **Deployed Source SHA** | **CONTENT-VERIFIED:** Matches `699cfd0dc0bf43621d62eb0a969f5d0ac8f73d1b` | Live DOM text and assets match local build; exact provider-recorded Git SHA is **UNVERIFIED via CLI**. |
+| **Git Source Branch** | `main` | Default GitHub repository branch; confirmed by Project Owner in Vercel Dashboard. |
+| **Deployed Source SHA** | **OWNER-VERIFIED DASHBOARD EVIDENCE:** `699cfd0dc0bf43621d62eb0a969f5d0ac8f73d1b` | Confirmed by Project Owner in Vercel Dashboard; corroborated by 100% match of live DOM content and static assets. |
 | **Configured Node.js Version** | **UNVERIFIED via CLI** | Target runtime `Node.js 26.x` pinned locally via `.nvmrc` and `package.json` engines; Vercel dashboard setting uninspected. |
 | **Output Directory** | Default Next.js behavior | Satisfies mandatory review correction (not overridden to `.next`). |
 | **Application Secrets** | **None** | M01 requires 0 application secrets; Supabase credentials strictly deferred to M02 per ADR-004. |
