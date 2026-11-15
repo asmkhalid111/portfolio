@@ -99,3 +99,21 @@
 - **Context:** Initial scaffolding configured `@tailwindcss/turbopack` loader rules in `next.config.ts`. However, `@tailwindcss/turbopack` is an early Turbopack-specific loader whose official release notes began in Tailwind v4.3.4, whereas the official Tailwind CSS v4 guide for Next.js specifies `@tailwindcss/postcss` with `postcss.config.mjs`.
 - **Decision:** Standardize on the official Tailwind/PostCSS integration (`@tailwindcss/postcss` + `postcss` in `postcss.config.mjs`) and remove dedicated `turbopack.rules` from `next.config.ts`.
 - **Consequences:** Eliminates loader fragility, avoids duplicate/conflicting CSS processing pipelines, supports both Turbopack and Webpack transparently, and outputs modern wide-gamut CSS color functions (`lab`/`oklch`) verified via browser-level computed-style tests.
+
+---
+
+## ADR-009: Controlled Exception for GitHub Actions CI and Mandatory Alternative Verification Protocol
+- **Status:** **ACCEPTED** (Approved by Project Owner & ChatGPT in M01 Gate C Preparation).
+- **Date:** 2026-11-16.
+- **Context:** During M01 Gate B2, the public repository `asmkhalid111/portfolio` was created and pushed, but GitHub Actions runner execution was blocked by an external platform-level billing lock on the owner's GitHub account (`asmkhalid111`), recorded in `docs/ERRORS.md` as `ERR-006`. Pausing development until third-party billing is cleared would stall the academic milestone roadmap.
+- **Decision:**
+  1. Grant a controlled exception waiving a green GitHub Actions CI badge as a blocking gate for milestone progression and deployment.
+  2. Retain the complete GitHub Actions workflow configuration (`.github/workflows/ci.yml`) without modification for immediate recovery when account billing is resolved.
+  3. Require every milestone to satisfy a 12-point alternative verification protocol: clean Git tree, isolated dependency install (`npm ci`), ESLint (`eslint .`), strict TypeScript (`tsc --noEmit`), Vitest component and privacy tests (`vitest run`), Playwright browser tests across viewports (`playwright test`), production compilation (`next build`), production dependency audit (`npm audit --omit=dev`), privacy & secrets scanning, durable on-disk evidence, independent ChatGPT milestone audit, and live post-deployment smoke verification.
+  4. Require real database migrations, RLS negative authorization tests, and authentication boundary tests for M02–M04.
+  5. Never misrepresent blocked or failing CI as passing.
+- **Rejected Alternatives:**
+  - *Hard block on GitHub billing resolution:* Rejected to avoid halting project development and academic timeline progress over an external billing hold.
+  - *Deleting or altering the CI workflow to fake green status:* Rejected because removing or softening CI configurations violates transparency and removes the setup needed for future runner restoration.
+  - *Informal or ad-hoc local testing:* Rejected because loose testing undermines software reliability. The 12-point protocol provides structured, auditable proof.
+- **Consequences:** Project development and Gate C deployment proceed unblocked. Quality, privacy, and security standards remain strictly enforced locally and independently audited by ChatGPT. When GitHub Actions minutes are unlocked, the CI pipeline will automatically execute without configuration changes.

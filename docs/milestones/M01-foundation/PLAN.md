@@ -1,11 +1,11 @@
 # M01 — Implementation Plan: Foundation, Environment Setup & First Deployment
 
 > **Milestone ID:** M01-foundation  
-> **Status:** GATE B2A COMPLETED (Gate B2 Remote Publication & Gate C Unauthorized)  
-> **Date:** 2026-11-15  
+> **Status:** GATE B COMPLETED (CI EXCEPTION APPROVED) — GATE C DEPLOYMENT PREPARED (Awaiting Project Owner Authorization)  
+> **Date:** 2026-11-16  
 > **Author:** Antigravity (Implementation Engineer & Documentation Maintainer)  
 > **Review Workflow:** Antigravity (Plan Author) → ChatGPT (Architecture & Acceptance Reviewer) → Project Owner (Final Authority & Approver)  
-> **Operating Mode:** LOCAL GIT HISTORY SANITIZATION COMPLETE (Remote GitHub and Vercel strictly prohibited)
+> **Operating Mode:** REPOSITORY PUBLISHED & SANITIZED — GATE C DEPLOYMENT PREPARATION (Vercel deployment held pending explicit owner authorization)
 
 ---
 
@@ -17,6 +17,7 @@
 | v0.2 | 2026-11-15 | Antigravity | Incorporated mandatory ChatGPT architecture corrections: updated Next.js 16 linting command to `eslint .` (as `next lint` is removed in Next.js 16); ensured complete scaffold manifest transfer including generated `package.json` and build configs; redesigned pre-publication secrets/privacy audit to be recursive, Git-aware, and multi-layered; replaced blanket rollback deletion with non-destructive checkpoint recovery; revalidated dependency versions (`next@16.4.6`, `react@19.3.1`, `typescript@5.8.2`, `vitest@5.1.0`); recorded Project Owner authorization for Gate A implementation only (Gate B & C remain unauthorized). |
 | v0.3 | 2026-11-15 | Antigravity | Reconciled package dependency findings: migrated Vitest to `5.1.0` to resolve critical `tinypool` prototype pollution advisory GHSA-5gmw-xhrv-c9v3; standardized Tailwind CSS v4 on official `@tailwindcss/postcss@4.3.3` + `postcss@8.5.33` with `postcss.config.mjs` and removed experimental `@tailwindcss/turbopack` loader rules; added browser-level computed CSS assertions in Playwright verifying wide-gamut color and geometric layout compilation; separated Gate B into Gate B1 (Local Git Foundation & Baseline Audit — COMPLETED) and Gate B2 (Remote GitHub Creation & CI — UNAUTHORIZED). |
 | v0.4 | 2026-11-15 | Antigravity | Gate B2A Git Email Privacy Correction: verified Project Owner's official GitHub noreply address (`130174468+asmkhalid111@users.noreply.github.com`) via GitHub CLI and verified historical commits; created local recovery checkpoint; sanitized commit author/committer metadata and historical tracked documentation; purged unreferenced Next.js default sample SVGs; verified zero occurrences of personal email across all historical commits and trees. Remote publication remains unauthorized. |
+| v0.5 | 2026-11-16 | Antigravity | Recorded Gate B2 publication completion (`asmkhalid111/portfolio`); recorded controlled exception for GitHub Actions CI approved by Project Owner and ChatGPT per ADR-009 due to external account billing lock; established mandatory 12-point alternative verification protocol; authored Gate C deployment checklist (`GATE_C_PREPARATION.md`); confirmed branch protection and rulesets are 404/empty on GitHub; retained `.github/workflows/ci.yml` intact; Gate C deployment strictly gated on explicit owner authorization. |
 
 ---
 
@@ -302,6 +303,11 @@ jobs:
         run: npm run test:e2e
 ```
 
+> [!NOTE]
+> **Controlled CI Exception & Temporary Service Waiver (ADR-009):**
+> Upon pushing to `main`, GitHub Actions runners were refused by GitHub infrastructure due to an account-level billing restriction on account `asmkhalid111` (`ERR-006`). The Project Owner explicitly decided, with ChatGPT concurrence, that this restriction must not stall project development. The green CI requirement is temporarily waived; `.github/workflows/ci.yml` is retained intact for immediate recovery when billing is addressed. The mandatory 12-point alternative verification protocol defined in `docs/TESTING.md` serves as the rigorous baseline for all milestones in the interim.
+
+
 ---
 
 ## 8. Implementation & Deployment Approval Gates
@@ -330,21 +336,22 @@ To protect external accounts and enforce owner sovereignty, M01 is strictly divi
                                  │
                                  ▼ [STOP: Requires Owner Gate B2 Approval]
 ┌────────────────────────────────────────────────────────────────────────┐
-│ GATE B2: GitHub Remote & CI (UNAUTHORIZED — Awaiting Review & Owner)   │
+│ GATE B2: GitHub Remote & CI (COMPLETED — CI EXCEPTION APPROVED)        │
 │ - Create public GitHub repository via gh CLI: asmkhalid111/portfolio   │
-│ - Authenticate remote origin: origin = git@github.com:...              │
-│ - Push main branch to remote                                           │
-│ - Trigger and monitor GitHub Actions CI pipeline on Node 26            │
-│ └── PASS CONDITION: Remote repo created, CI workflow green on main     │
+│ - Authenticate remote origin: origin = https://github.com/...          │
+│ - Push sanitized main branch to remote (clean history, noreply email)  │
+│ - External account billing lock on asmkhalid111 blocks runner dispatch │
+│ - CI green requirement waived per ADR-009; .github/workflows/ retained │
+│ └── PASS CONDITION: Public repo created, 12-point local suite green    │
 └────────────────────────────────────────────────────────────────────────┘
                                  │
                                  ▼ [STOP: Requires Owner Gate C Approval]
 ┌────────────────────────────────────────────────────────────────────────┐
-│ GATE C: Hosting & First Live Deployment (UNAUTHORIZED — Pending B2)    │
-│ - Link repository to Vercel Hobby project (Node.js 26.x runtime)       │
-│ - Zero environment secrets required in M01                             │
-│ - Trigger initial production deployment                                │
-│ - Verify live public URL: https://<project>.vercel.app returns 200     │
+│ GATE C: Hosting & First Live Deployment (PREPARED — Awaiting Owner)    │
+│ - Connect repository to Vercel Hobby project (Node.js 26.x runtime)    │
+│ - Zero environment secrets required in M01 (Supabase deferred to M02)  │
+│ - Verify branch protection (none) and independent Vercel build         │
+│ - Deploy approved Git commit and verify live URL (HTTP 200, valid SSL) │
 │ └── PASS CONDITION: Live URL accessible, SSL valid, smoke test passes  │
 └────────────────────────────────────────────────────────────────────────┘
 ```
@@ -500,49 +507,55 @@ npm run test:e2e
 
 ## 13. Acceptance Checklist for M01
 
-### Gate A (Local Foundation — Authorized)
-- [ ] Next.js 16.4.6 scaffolded non-destructively; no governance files (`AGENTS.md`, `README.md`, `docs/`, `prompts/`) overwritten or deleted.
-- [ ] Dependencies installed with committed `package-lock.json`; zero canary packages; no `--force` or `--legacy-peer-deps`.
-- [ ] Strict type safety: `npm run typecheck` exits with code 0 under strict TypeScript configuration.
-- [ ] Clean linting: `npm run lint` (`eslint .`) exits with code 0 with zero warnings or errors.
-- [ ] Unit tests passing: `npm test` (Vitest) executes and passes all component tests.
-- [ ] Production build success: `npm run build` generates optimized production bundle with zero compilation errors.
-- [ ] Browser smoke tests passing: `npm run test:e2e` (Playwright) passes desktop, mobile viewport, and accessibility baseline checks.
-- [ ] `docs/milestones/M01-foundation/GATE_A_REPORT.md` authored and read back from disk.
+### Gate A (Local Foundation — Completed & Accepted)
+- [x] Next.js 16.4.6 scaffolded non-destructively; no governance files (`AGENTS.md`, `README.md`, `docs/`, `prompts/`) overwritten or deleted.
+- [x] Dependencies installed with committed `package-lock.json`; zero canary packages; no `--force` or `--legacy-peer-deps`.
+- [x] Strict type safety: `npm run typecheck` exits with code 0 under strict TypeScript configuration.
+- [x] Clean linting: `npm run lint` (`eslint .`) exits with code 0 with zero warnings or errors.
+- [x] Unit tests passing: `npm test` (Vitest) executes and passes all component tests.
+- [x] Production build success: `npm run build` generates optimized production bundle with zero compilation errors.
+- [x] Browser smoke tests passing: `npm run test:e2e` (Playwright) passes desktop, mobile viewport, and accessibility baseline checks.
+- [x] `docs/milestones/M01-foundation/GATE_A_REPORT.md` authored, read back from disk, and accepted by ChatGPT.
 
-### Gate B (Git & Remote Repo — Unauthorized)
-- [ ] Automated pre-publication scan verifies no private phone numbers, residential addresses, CV PDFs, or secrets exist in any tracked file.
-- [ ] Local Git repository initialized cleanly on `main` branch with descriptive initial commit.
-- [ ] Public GitHub repository `asmkhalid111/portfolio` created via `gh` CLI and pushed.
-- [ ] GitHub Actions CI workflow runs on GitHub and reports green status across all jobs.
+### Gate B (Git Publication & CI Governance — Completed with Approved CI Exception)
+- [x] Automated pre-publication scan verifies no private phone numbers, residential addresses, CV PDFs, or secrets exist in any tracked file.
+- [x] Local Git repository initialized cleanly on `main` branch with descriptive, conventional commit history.
+- [x] Public GitHub repository `asmkhalid111/portfolio` created via `gh` CLI and pushed to `main`.
+- [x] Verified noreply author identity across all commits (`130174468+asmkhalid111@users.noreply.github.com`).
+- [x] GitHub Actions CI workflow configured and retained intact in `.github/workflows/ci.yml`.
+- [x] Controlled CI exception granted per ADR-009: green CI badge temporarily waived due to account billing lock; mandatory 12-point alternative verification protocol established.
+- [x] `docs/milestones/M01-foundation/GATE_B_GITHUB_REPORT.md` authored, updated, and pushed to `origin/main`.
 
-### Gate C (Hosting Deployment — Unauthorized)
-- [ ] Minimal application shell deployed to Vercel Hobby tier; public URL accessible over HTTPS with valid SSL.
-- [ ] Production smoke test passes against live Vercel URL.
-- [ ] `docs/milestones/M01-foundation/COMPLETION.md` created with actual executed commands, outputs, commit SHA, and deployment URL.
+### Gate C (Hosting Deployment — Prepared, Awaiting Owner Authorization)
+- [ ] Connect `asmkhalid111/portfolio` to Vercel Hobby project (Node.js 26.x runtime) upon explicit owner authorization.
+- [ ] Verify zero environment secrets configured in Vercel for M01 (Supabase deferred to M02).
+- [ ] Deploy approved Git commit and verify public HTTPS URL returns HTTP 200 with valid SSL.
+- [ ] Execute post-deployment live desktop and mobile smoke tests.
+- [ ] Author `docs/milestones/M01-foundation/COMPLETION.md` recording actual execution commands, outputs, commit SHA, and deployment URL.
 
 ---
 
 ## 14. Decisions Requiring Project Owner Approval
 
-The following items are explicit decision gates requiring **Project Owner** authorization before execution:
+The following items are explicit decision gates requiring **Project Owner** authorization:
 
 - [x] **1. Authorization for Gate A Implementation:** Authorized by project owner in M01 Gate A directive.
-- [ ] **2. Authorization for Gate B (Git & GitHub):** Authorize initializing Git, creating the public GitHub repository `asmkhalid111/portfolio`, and pushing code to GitHub.
-- [ ] **3. Authorization for Gate C (Vercel):** Authorize linking the GitHub repository to Vercel Hobby and triggering the initial public deployment.
-- [ ] **4. Public Homepage Bio Text Approval:** Approve the introductory candidate copy for the foundation homepage (Name, DIU student status, and candidate project highlights).
+- [x] **2. Authorization for Gate B (Git & GitHub):** Authorized by project owner; repo created and pushed.
+- [x] **3. Controlled CI Exception Approval:** Approved by project owner and accepted by ChatGPT; green CI badge temporarily waived; 12-point alternative protocol in effect.
+- [ ] **4. Authorization for Gate C (Vercel Deployment):** Authorize linking the GitHub repository to Vercel Hobby and triggering the initial public deployment.
+- [x] **5. Public Homepage Bio Text Approval:** Approved candidate copy for the foundation homepage shell.
 
 ---
 
 ## 15. Expected Implementation Evidence
 
-Upon completion of M01 Gate A implementation, the following concrete artifacts must be documented in `GATE_A_REPORT.md`:
-1. Actual executed command lines and exit codes for scaffolding, installs, linting, typechecking, tests, and build.
-2. Verified package versions in `package.json` and `package-lock.json`.
-3. Vitest test output and Playwright test summary.
-4. Pre-publication audit execution output.
-5. Verification that `GATE_A_REPORT.md` exists and is read back from disk.
+Upon completion of M01 Gate C implementation, the following concrete artifacts must be documented in `COMPLETION.md`:
+1. Vercel deployment ID, production URL, and deployment timestamp.
+2. Verified Node.js 26 runtime build logs.
+3. Live HTTP 200 and SSL verification logs.
+4. Live browser smoke test execution logs.
+5. Verification that `COMPLETION.md` exists and is read back from disk.
 
 ---
 
-*Gate A Implementation in Progress. Gate B and Gate C remain unauthorized.*
+*Gate A and Gate B Completed. Controlled CI Exception Approved. Gate C Deployment Prepared in GATE_C_PREPARATION.md and Awaiting Project Owner Authorization.*
