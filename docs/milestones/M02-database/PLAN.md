@@ -1,12 +1,13 @@
-# Milestone Implementation Plan: M02 — Database Integration & RLS Foundation
+# Milestone Implementation Plan: M02 — Database Integration & RLS Foundation (v0.2)
 
-> **Milestone ID:** M02  
-> **Status:** `AWAITING REVIEW`  
-> **Date:** 2026-11-16  
-> **Author:** Antigravity (Implementation Planner & Release Engineer)  
-> **Reviewer:** ChatGPT (Architecture & Security Reviewer)  
-> **Approval Authority:** Project Owner  
-> **Operating Mode:** PLANNING ONLY (No database code or provisioning executed in this gate)  
+> **Milestone ID:** M02
+> **Document Version:** v0.2 (Post-ChatGPT Gate A Audit Corrections)
+> **Status:** `AWAITING REVIEW`
+> **Date:** 2026-11-16
+> **Author:** Antigravity (Implementation Planner & Release Engineer)
+> **Reviewer:** ChatGPT (Architecture & Security Reviewer)
+> **Approval Authority:** Project Owner
+> **Operating Mode:** PLANNING ONLY (Zero database code, migrations, or provisioning executed in this gate)
 
 ---
 
@@ -14,24 +15,25 @@
 
 | Version | Date | Author | Summary of Changes |
 |:---:|:---:|:---:|:---|
-| **v0.1** | 2026-11-16 | Antigravity | Initial draft of M02 database architecture, schema specification, Row Level Security matrix, Supabase client integration plan, migration strategy, and multi-gate implementation protocol. |
+| **v0.1** | 2026-11-16 | Antigravity | Initial draft of M02 database architecture, schema specification, Row Level Security matrix, Supabase client integration plan, migration strategy, and multi-gate protocol. |
+| **v0.2** | 2026-11-16 | Antigravity | **ChatGPT Audit Corrections Applied**: <br>1. Replaced `public.is_admin()` and `public.admin_users` with hardened private-schema architecture (`private.is_admin()`, `private.admin_users`), completely unexposed to PostgREST/Data API.<br>2. Adopted modern 2026 Supabase key naming conventions (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`), deprecating legacy JWT defaults.<br>3. Defined explicit 3-tier database test isolation (Local Disposable, Staging, Production) prohibiting destructive tests or resets against production.<br>4. Hardened Next.js SSR plan with `cookies().getAll()`/`setAll()`, verified `getUser()` server checks, and private cache-control headers.<br>5. Expanded test matrix to 33 distinct cases (26 RLS + 7 integrity constraints) verifying zero-row state retention on unauthorized mutations. |
 
 ---
 
 ## 2. Objective & Academic Relevance
 
 ### 2.1 Primary Objective
-Establish a secure, declarative, and robust PostgreSQL database layer on Supabase Free Tier for the personal portfolio. This includes:
-1. Version-controlled SQL schema migrations for core portfolio entities (`admin_users`, `projects`, `project_media`).
+Establish a secure, declarative, and production-hardened PostgreSQL database layer on Supabase Free Tier for the personal portfolio. This includes:
+1. Version-controlled SQL schema migrations for core portfolio entities (`private.admin_users`, `public.projects`, `public.project_media`).
 2. Kernel-enforced Row Level Security (RLS) policies and granular table-level SQL grants.
-3. Database-enforced administrator authorization via a hardened `is_admin()` security-definer function.
+3. Database-enforced administrator authorization via a hardened `private.is_admin()` security-definer function residing in an unexposed schema.
 4. Safe, idiomatic Next.js App Router client integration using `@supabase/ssr` and `@supabase/supabase-js`.
 5. Automated negative-access security tests validating that drafts are unreachable by anonymous visitors and unauthorized mutations are strictly rejected by the PostgreSQL engine.
 
 ### 2.2 Academic & University Grading Relevance
 University evaluations assess data integrity, security boundaries, and architectural defensibility. Demonstrating that:
 - Security is enforced at the database kernel rather than relying solely on client UI states or middleware redirects,
-- Administrative privileges are restricted out-of-band and verified against a database whitelist,
+- Administrative identities are isolated in an internal, non-API schema (`private.admin_users`) with zero public access,
 - Draft records are isolated at the query layer and return genuine HTTP 404s, and
 - Database migrations are fully deterministic and trackable in version control,
 provides rigorous evidence of professional full-stack software engineering.
@@ -42,20 +44,22 @@ provides rigorous evidence of professional full-stack software engineering.
 
 ### 3.1 In Scope (M02)
 - **Database Schema Migrations:** Declarative SQL migrations in `supabase/migrations/` for:
-  - `admin_users` (UUID primary key referencing `auth.users(id)`, email, constraints).
-  - `projects` (UUID primary key, title, unique slug, summary, problem/approach/outcome, technologies array, repository/demo URLs, draft/publish status, sort ordering, timestamps).
-  - `project_media` (UUID primary key, foreign key CASCADE to `projects(id)`, storage path, alt text, sort order).
+  - `private.admin_users` (UUID primary key referencing `auth.users(id)`, email, constraints).
+  - `public.projects` (UUID primary key, title, unique slug, summary, problem/approach/outcome, technologies array, repository/demo URLs, draft/publish status, sort ordering, timestamps).
+  - `public.project_media` (UUID primary key, foreign key CASCADE to `projects(id)`, storage path, alt text, sort order).
   - Triggers for automatic `updated_at` timestamps and `published_at` synchronization.
 - **Security & Authorization Infrastructure:**
+  - Internal `private` schema unexposed to PostgREST / Data API.
   - Table-level SQL grants (`REVOKE ALL FROM PUBLIC`, selective `GRANT` to `anon` and `authenticated`).
-  - Strict RLS policies for `admin_users`, `projects`, and `project_media`.
-  - Hardened `public.is_admin()` function with `SECURITY DEFINER SET search_path = ''`.
+  - Strict RLS policies for `private.admin_users`, `public.projects`, and `public.project_media`.
+  - Hardened `private.is_admin()` function with `SECURITY DEFINER SET search_path = ''` owned by `postgres`.
 - **Client Integration Layer:**
   - Installation of `@supabase/supabase-js` and `@supabase/ssr`.
+  - Modern API key architecture (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`).
   - Typed client factories: Browser client (`createBrowserClient`) and Server client (`createServerClient` with Next.js `cookies()`).
   - Scrubbed `.env.example` documenting required environment variables.
 - **Verification & Testing:**
-  - Real database negative-access RLS tests (`tests/database/rls.test.ts`).
+  - Real database negative-access RLS tests (`tests/database/rls.test.ts`) executed against an isolated test environment.
   - Full compliance with the ADR-009 12-point alternative verification protocol.
 
 ### 3.2 Explicit Non-Goals (Deferred to Later Milestones)
@@ -70,7 +74,7 @@ provides rigorous evidence of professional full-stack software engineering.
 
 ## 4. Preconditions & Dependencies
 
-1. **M01 Milestone Closure:** M01 must be finalized with the annotated tag `m01-complete` published to GitHub and production verified on Vercel. *(Verified: tag `m01-complete` at `699cfd0`, main at `a3146a2`)*.
+1. **M01 Milestone Closure:** M01 finalized with the annotated tag `m01-complete` published to GitHub and production verified on Vercel. *(Verified: tag `m01-complete` at `699cfd0`, main at `a3146a2`)*.
 2. **Review & Approval Gate:** This plan (`docs/milestones/M02-database/PLAN.md`), `SCHEMA_SPEC.md`, and `RLS_MATRIX.md` must be reviewed and accepted by ChatGPT, followed by explicit Project Owner authorization before Gate B provisioning.
 3. **Owner Cloud Account:** The Project Owner must possess or create an account on Supabase (`supabase.com`) on the Free Tier ($0/mo).
 4. **Local Tools:** Supabase CLI installed as a local dev dependency or invoked via `npx supabase@latest`.
@@ -84,16 +88,16 @@ portfolio/
 ├── docs/
 │   ├── milestones/
 │   │   └── M02-database/
-│   │       ├── PLAN.md              # [CREATED] This implementation plan
-│   │       ├── SCHEMA_SPEC.md       # [CREATED] Detailed PostgreSQL schema specification
-│   │       └── RLS_MATRIX.md        # [CREATED] Detailed RLS policies and test matrix
+│   │       ├── PLAN.md              # [REVISED v0.2] This implementation plan
+│   │       ├── SCHEMA_SPEC.md       # [REVISED v0.2] Hardened PostgreSQL schema specification
+│   │       └── RLS_MATRIX.md        # [REVISED v0.2] Hardened RLS policies and 33-case test matrix
 ├── supabase/
 │   ├── config.toml                  # [PLANNED Gate B] Supabase CLI configuration
-│   ├── seed.sql                     # [PLANNED Gate C] Test fixtures (published & draft projects)
+│   ├── seed.sql                     # [PLANNED Gate C] Local/test fixtures (draft & published projects)
 │   └── migrations/
-│       ├── 20261116000001_create_admin_users.sql   # [PLANNED Gate C] admin_users & is_admin()
-│       ├── 20261116000002_create_projects.sql      # [PLANNED Gate C] projects table & RLS
-│       └── 20261116000003_create_project_media.sql # [PLANNED Gate C] project_media table & RLS
+│       ├── 20261116000001_create_private_schema_and_admin_users.sql   # [PLANNED Gate C] private schema & is_admin()
+│       ├── 20261116000002_create_projects.sql                         # [PLANNED Gate C] projects table & RLS
+│       └── 20261116000003_create_project_media.sql                    # [PLANNED Gate C] project_media table & RLS
 ├── src/
 │   └── lib/
 │       └── supabase/
@@ -103,19 +107,31 @@ portfolio/
 ├── tests/
 │   └── database/
 │       └── rls.test.ts              # [PLANNED Gate D] Real database RLS negative test suite
-├── .env.example                     # [PLANNED Gate B] Scrubbed environment variables template
+├── .env.example                     # [PLANNED Gate B] Modern scrubbed environment variables template
 └── package.json                     # [PLANNED Gate B] Add @supabase/supabase-js & @supabase/ssr
 ```
 
 ---
 
-## 6. Supabase Integration Architecture
+## 6. Supabase Integration Architecture & Next.js SSR Security
 
 ### 6.1 Package Selection & Roles
 - **`@supabase/supabase-js`:** Core isomorphic client providing query building, PostgREST filtering, Auth primitives, and error handling.
-- **`@supabase/ssr`:** Official Supabase package designed specifically for Next.js App Router. Replaces legacy `@supabase/auth-helpers-nextjs`. Handles cookie serialization, session refreshes, and prevents cookie-handling vulnerabilities across Server Components, Server Actions, and Route Handlers.
+- **`@supabase/ssr`:** Official Supabase package designed specifically for Next.js App Router. Handles cookie serialization, session refreshes, and prevents cookie-handling vulnerabilities across Server Components, Server Actions, and Route Handlers.
 
-### 6.2 Client Separation Model
+### 6.2 Modern API Key Architecture
+Supabase recently introduced modern API key conventions that replace legacy JWT-based `anon` and `service_role` keys:
+- **`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`sb_pub_...`)**: Public publishable key used by browser and server runtimes. Governed entirely by PostgreSQL SQL grants and Row Level Security.
+- **`SUPABASE_SECRET_KEY` (`sb_sec_...`)**: Secret administrative key. Bypasses RLS. Restricted strictly to offline maintenance and test scripts in isolated environments. **NEVER** exposed to client bundles, public variables, or application runtime.
+
+| Variable Name | Scope | Sensitivity | Purpose |
+|:---|:---|:---:|:---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Public (Client + Server) | Low (Public URL) | Base URL of the Supabase project REST API. |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public (Client + Server) | Low (Subject to RLS) | Publishable client key (`sb_pub_...`). |
+| `SUPABASE_SECRET_KEY` | Private (Offline Test/Admin Only) | **CRITICAL (Bypasses RLS)** | Never in client code; never in Vercel public settings; ignored by Git. |
+| `SUPABASE_DB_PASSWORD` | Private (Owner Only) | **CRITICAL** | Direct PostgreSQL connection password for Supabase CLI. |
+
+### 6.3 Next.js SSR Client Factories
 1. **Browser Client (`src/lib/supabase/client.ts`):**
    ```typescript
    import { createBrowserClient } from '@supabase/ssr';
@@ -124,7 +140,7 @@ portfolio/
    export function createClient() {
      return createBrowserClient<Database>(
        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
      );
    }
    ```
@@ -139,7 +155,7 @@ portfolio/
 
      return createServerClient<Database>(
        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
        {
          cookies: {
            getAll() {
@@ -152,7 +168,7 @@ portfolio/
                );
              } catch {
                // The `setAll` method was called from a Server Component.
-               // This can be ignored if you have middleware refreshing sessions.
+               // This can be ignored if middleware is refreshing user sessions.
              }
            },
          },
@@ -160,71 +176,98 @@ portfolio/
      );
    }
    ```
-3. **Administrative / Test Runner Operations:**
-   - Migration management is conducted exclusively via `npx supabase db push` or direct psql execution.
-   - Test harness (`tests/database/rls.test.ts`) uses temporary test identities and the publishable anon key to test RLS boundaries.
-   - The `SUPABASE_SERVICE_ROLE_KEY` is restricted strictly to local database teardown/seed scripts and is NEVER bundled into application code.
 
-### 6.3 Environment Variables & Configuration
-| Variable Name | Scope | Sensitivity | Purpose |
-|:---|:---|:---:|:---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Public (Client + Server) | Low (Public URL) | Base URL of the Supabase project REST API. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public (Client + Server) | Low (Subject to RLS) | Publishable client key. Encodes `anon` role. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Private (Local test/admin only) | **CRITICAL (Bypasses RLS)** | Never in client code; never in Vercel public settings; ignored by Git. |
-| `SUPABASE_DB_PASSWORD` | Private (Owner only) | **CRITICAL** | Direct PostgreSQL connection password for Supabase CLI. |
-
----
-
-## 7. Migration & Rollback Strategy
-
-### 7.1 Migration Workflow (Supabase CLI)
-1. **Local Setup:**
-   `npx supabase init` creates `supabase/config.toml`.
-2. **Migration Files:**
-   Migrations are created in `supabase/migrations/` with UTC timestamp prefixes:
-   - `20261116000001_create_admin_users.sql`
-   - `20261116000002_create_projects.sql`
-   - `20261116000003_create_project_media.sql`
-3. **Execution to Remote Project:**
-   `npx supabase link --project-ref <project-id>` links the project, followed by:
-   `npx supabase db push` to apply unapplied migrations deterministically.
-4. **Type Generation:**
-   `npx supabase gen types typescript --linked > src/lib/supabase/types.ts` produces end-to-end type safety from the remote PostgreSQL schema.
-
-### 7.2 Roll-Forward & Recovery Strategy
-- In accordance with production database best practices, rollbacks on remote databases will be executed as **roll-forward migrations** (e.g., `20261116000004_fix_...sql`).
-- Destructive operations (`DROP TABLE CASCADE` or `DROP SCHEMA`) are prohibited in production environments.
-- Fresh local or staging environments can be completely rebuilt via `npx supabase db reset`.
+### 6.4 Server-Side Authentication & Cache Security
+1. **Verified User Authentication (`getUser()` vs `getSession()`):**
+   - In Next.js Server Components, Server Actions, and Route Handlers, authentication must **always** be verified via `await supabase.auth.getUser()`.
+   - Calling `supabase.auth.getSession()` on the server is unsafe because it reads unverified cookie payloads without re-validating the token against Supabase Auth.
+2. **Cache-Control & Private Data Protection:**
+   - Any Server Action, API Route, or page rendering authenticated/admin content must emit HTTP headers:
+     `Cache-Control: private, no-store, max-age=0`
+   - Prevents intermediate proxies, CDNs, or Vercel Edge Cache from storing or serving private admin responses.
+3. **Defense-in-Depth Query Filtering:**
+   - Even though database RLS strictly isolates drafts from anonymous requests, public queries will explicitly include `.eq('status', 'published')`. This prevents accidental cache pollution and provides multi-layered defense.
 
 ---
 
-## 8. Multi-Gate Implementation Protocol
+## 7. Database Test Isolation Architecture
 
-M02 will be implemented across four sequential, gated stages:
+To protect production data and prevent destructive operations against live environments, M02 defines three strictly segregated database tiers:
 
 ```
-[ Gate A: Plan & Spec ] ──► (ChatGPT Audit & Owner Approval)
-                                       │
-[ Gate B: Provisioning & Config ] ────► (Owner Supplies Credentials)
-                                       │
-[ Gate C: Migrations & Client ] ──────► (SQL Schema & Types Applied)
-                                       │
-[ Gate D: RLS Tests & Audit ] ────────► (16 RLS Tests Green & Final Report)
+┌────────────────────────────────┐
+│   Tier A: Local Disposable     │ ──► Used for: Migrations replay, destructive tests,
+│   (npx supabase start / Docker)│     temporary Auth users, seed testing, 'db reset'.
+└────────────────────────────────┘
+                 │
+┌────────────────────────────────┐
+│   Tier B: Isolated Staging     │ ──► Used for: Remote migration verification before
+│   (Optional cloud test ref)    │     production apply, automated pre-release test suite.
+└────────────────────────────────┘
+                 │
+┌────────────────────────────────┐
+│   Tier C: Live Production      │ ──► Used for: Real portfolio traffic only.
+│   (supabase.com project)       │     RULES: Zero test users. Zero destructive tests.
+└────────────────────────────────┘     'supabase db reset' is PERMANENTLY PROHIBITED.
+```
+
+### Strict Test Rules:
+- **Destructive RLS Tests**: All 26 RLS negative authorization tests and 7 constraint violation tests must execute against **Tier A** (local container) or **Tier B** (isolated staging).
+- **Production Safety Invariant**: The production Supabase project must **NEVER** be subjected to `supabase db reset`, automated test user creation, or test mutation suites.
+- **Seed Data Discipline**: `supabase/seed.sql` is strictly for local development and test fixtures. Production content seeding is performed separately and verified by the owner.
+
+---
+
+## 8. Migration & Rollback Strategy
+
+### 8.1 Migration Workflow (Supabase CLI)
+1. **Local Setup:**
+   `npx supabase init` creates `supabase/config.toml`.
+2. **Chronological Migration Files:**
+   Migrations reside in `supabase/migrations/` using UTC timestamp prefixes:
+   - `20261116000001_create_private_schema_and_admin_users.sql`
+   - `20261116000002_create_projects.sql`
+   - `20261116000003_create_project_media.sql`
+3. **Local Replay & Verification:**
+   Before applying migrations to any remote environment, migrations are verified locally via `npx supabase db reset` on Tier A.
+4. **Remote Migration Application:**
+   `npx supabase link --project-ref <project-ref>` followed by `npx supabase db push` applies unapplied migrations deterministically.
+5. **Type Generation:**
+   `npx supabase gen types typescript --linked > src/lib/supabase/types.ts` produces complete end-to-end type safety from the remote PostgreSQL schema.
+
+### 8.2 Roll-Forward & Recovery Discipline
+- Rollbacks in remote environments are executed strictly as **roll-forward additive migrations** (`2026..._fix_...sql`).
+- Destructive commands (`DROP TABLE CASCADE` or `supabase db reset`) are strictly prohibited in production.
+
+---
+
+## 9. Multi-Gate Implementation Protocol
+
+M02 will execute across four sequential, gated checkpoints:
+
+```
+[ Gate A: Plan & Spec v0.2 ] ──► (ChatGPT Audit & Owner Approval)
+                                            │
+[ Gate B: Provisioning & Config ] ─────────► (Owner Supplies Credentials)
+                                            │
+[ Gate C: Migrations & Client ] ───────────► (SQL Schema & Types Applied)
+                                            │
+[ Gate D: RLS Tests & Audit ] ─────────────► (33 Tests Green & Final Report)
 ```
 
 ### Gate A — Database Architecture and Security Planning (CURRENT GATE)
-- **Deliverables:** `PLAN.md`, `SCHEMA_SPEC.md`, `RLS_MATRIX.md` on branch `feat/m02-database`.
+- **Deliverables:** `PLAN.md` (v0.2), `SCHEMA_SPEC.md` (v0.2), `RLS_MATRIX.md` (v0.2) on branch `feat/m02-database`.
 - **Exit Criteria:** ChatGPT architecture and security audit accepted; explicit Project Owner authorization to proceed to Gate B.
 - **Actions:** Zero code changes; zero Supabase provisioning.
 
 ### Gate B — Owner-Approved Supabase Provisioning and Local Configuration
 - **Prerequisites:** Project Owner provisions a new project on Supabase Free Tier.
 - **Deliverables:**
-  - Owner populates `.env.local` with real project URL and publishable anon key.
-  - Antigravity updates `.env.example` with scrubbed placeholder keys.
+  - Owner populates `.env.local` with real project URL and publishable key.
+  - Antigravity updates `.env.example` with modern scrubbed placeholders.
   - Install `@supabase/supabase-js` and `@supabase/ssr` via `npm install`.
   - Initialize Supabase CLI configuration (`supabase/config.toml`).
-  - Verify network connectivity to Supabase endpoint.
+  - Verify network connectivity to the Supabase endpoint.
 - **Exit Criteria:** `npm ci`, lint, and typecheck pass; connectivity verified.
 
 ### Gate C — SQL Migrations, Schema Constraints, and RLS Implementation
@@ -233,20 +276,20 @@ M02 will be implemented across four sequential, gated stages:
   - Apply migrations to the Supabase project via `npx supabase db push`.
   - Generate TypeScript database types in `src/lib/supabase/types.ts`.
   - Implement browser and server client factories in `src/lib/supabase/client.ts` and `src/lib/supabase/server.ts`.
-  - Seed test data via `supabase/seed.sql` (sample draft and published projects).
+  - Seed test data via `supabase/seed.sql` (sample draft and published projects) in Tier A/B.
 - **Exit Criteria:** Remote PostgreSQL schema verified; TypeScript compiles cleanly (`npm run typecheck`).
 
 ### Gate D — Real Database Security Tests, Integration Verification & Milestone Audit
 - **Deliverables:**
-  - Create and execute `tests/database/rls.test.ts` against the live Supabase instance.
-  - Verify all 16 RLS matrix test cases and 7 constraint violation test cases.
+  - Create and execute `tests/database/rls.test.ts` against an isolated test database (Tier A/B).
+  - Verify all 26 RLS matrix test cases and 7 constraint violation test cases (33 total).
   - Execute the full ADR-009 12-point alternative verification protocol (lint, typecheck, Vitest, build, Playwright, npm audit, secret scan).
   - Produce `docs/milestones/M02-database/COMPLETION.md`.
-- **Exit Criteria:** 100% of RLS negative tests pass; zero secret leaks; ChatGPT completion audit passed.
+- **Exit Criteria:** 33/33 database security and constraint tests pass; zero secret leaks; ChatGPT completion audit passed.
 
 ---
 
-## 9. Testing & ADR-009 Compliance Plan
+## 10. Testing & ADR-009 Compliance Plan
 
 Because GitHub Actions runner execution remains blocked under `ERR-006` and waived under `ADR-009`, M02 verification relies on the mandatory 12-point alternative verification protocol:
 
@@ -258,18 +301,19 @@ Because GitHub Actions runner execution remains blocked under `ERR-006` and waiv
 6. **E2E Browser Tests:** `npm run test:e2e` passes across desktop and mobile viewports.
 7. **Production Compilation:** `npm run build` compiles cleanly with static prerendering intact.
 8. **Dependency Audit:** `npm audit --omit=dev` reports 0 vulnerabilities in runtime dependencies.
-9. **Secrets & Privacy Audit:** Regex scan across repository ensuring no `SUPABASE_SERVICE_ROLE_KEY` or personal data exists in tracked files.
-10. **Real Database RLS Verification:** Automated Node.js/Vitest test script executing 16 RLS tests against live Supabase database.
+9. **Secrets & Privacy Audit:** Regex scan across repository ensuring no secret keys or personal data exist in tracked files.
+10. **Real Database RLS Verification:** Automated Node.js/Vitest test script executing 33 tests against isolated database.
 11. **Durable On-Disk Documentation:** Actual commands, exit codes, and test outputs recorded in `docs/milestones/M02-database/`.
 12. **Independent ChatGPT Audit:** Milestone reviewed by ChatGPT before closure.
 
 ---
 
-## 10. Risks & Decision Checklist for Project Owner
+## 11. Risks & Decision Checklist for Project Owner
 
 | Risk / Decision | Severity | Proposed Mitigation | Owner Action Required |
 |:---|:---:|:---|:---|
 | **Free-Tier 7-Day Inactivity Pause** | Medium | Supabase pauses projects after 7 days of inactivity. Homepage is designed to render fallback static copy gracefully. | Confirm acceptance of 1-click unpause procedure in Supabase Dashboard. |
-| **Service-Role Key Leakage** | Critical | Service-role key bypasses all RLS. | Do NOT commit `SUPABASE_SERVICE_ROLE_KEY`. Keep in `.env.local` only. |
-| **Out-of-Band Admin Provisioning** | Medium | No UI exists to register admins. | Owner will run SQL snippet in Supabase SQL Editor to insert their own `auth.users` UUID into `admin_users`. |
-| **Vercel Build Environment Variables** | Medium | Next.js build prerendering might attempt DB access if not properly guarded. | Configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Vercel project settings when ready. |
+| **Secret Key Leakage** | Critical | Secret keys bypass all RLS. | Do NOT commit `SUPABASE_SECRET_KEY`. Keep in `.env.local` only. |
+| **Out-of-Band Admin Provisioning** | Medium | No UI exists to register admins. | Owner will run SQL snippet in Supabase SQL Editor to insert their own `auth.users` UUID into `private.admin_users`. |
+| **Vercel Build Environment Variables** | Medium | Next.js build prerendering might attempt DB access if not properly guarded. | Configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in Vercel project settings when ready. |
+| **Production Database Integrity** | Critical | Accidental destructive reset on live DB. | `supabase db reset` strictly forbidden against production project. |

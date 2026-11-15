@@ -1,57 +1,65 @@
-# M02 Database Schema Specification
+# M02 Database Schema Specification (v0.2)
 
-> **Milestone:** M02 — Database Integration & RLS Foundation  
-> **Status:** PROPOSED ARCHITECTURE (Awaiting ChatGPT Audit & Owner Approval)  
-> **Target Database:** PostgreSQL 15+ (Managed Supabase Free Tier)  
-> **Date:** 2026-11-16  
+> **Milestone:** M02 — Database Integration & RLS Foundation
+> **Document Version:** v0.2 (Post-ChatGPT Gate A Audit Corrections)
+> **Status:** REVISED ARCHITECTURE (Awaiting ChatGPT Audit & Owner Approval)
+> **Target Database:** PostgreSQL 15+ (Managed Supabase Free Tier)
+> **Date:** 2026-11-16
 
 ---
 
 ## 1. Architectural Overview & Scoping Boundaries
 
-This document defines the relational database schema, integrity constraints, triggers, indexes, and database-level functions for the Portfolio project.
+This document specifies the PostgreSQL relational schema, integrity constraints, security-definer authorization functions, triggers, indexes, and privilege grants for the Portfolio project.
 
-### 1.1 Milestone Scoping Boundary: M02 vs M06
-To prevent premature schema bloat and keep testing focused and robust:
-- **Included in M02 (Core Foundation & Vertical Slice Prerequisites):**
-  1. `admin_users`: Mandatory whitelist table for database-enforced authorization and `is_admin()` security checks.
-  2. `projects`: Core entity required for M04 Projects CRUD vertical slice (draft/publish states, slugs, ordering, arrays).
-  3. `project_media`: Relational media metadata table tied directly to projects (foreign key CASCADE, media ordering).
-  4. Core functions and triggers: `is_admin()`, `update_updated_at_column()`, and publication timestamp triggers.
-- **Explicitly Deferred to M06 (Remaining Content CRUD):**
-  - `site_profile`, `experiences`, `education`, `skills`, and `certifications`.
-  - These secondary tables are defined as forward-compatible designs in Section 6 below, but will be introduced via additive migrations in **M06** to keep M02 and M04 implementations strictly minimal and testable.
+### 1.1 Key Revisions in v0.2
+- **Hardened Private Schema Authorization**: Replaced `public.is_admin()` and `public.admin_users` with `private.is_admin()` and `private.admin_users`. The `private` schema is unexposed to Supabase's PostgREST / Data API, preventing direct API discovery, query, or enumeration.
+- **Modern Supabase Key Architecture**: Standardized on modern Supabase API key conventions (`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` with format `sb_pub_...`), deprecating legacy JWT `anon`/`service_role` defaults. Privileged tooling uses `SUPABASE_SECRET_KEY` (`sb_sec_...`) strictly in isolated local/test environments.
+- **Strict Scoping Boundary**: M02 implements exclusively the core tables (`private.admin_users`, `public.projects`, `public.project_media`). Secondary content tables (`site_profile`, `experiences`, `education`, `skills`, `certifications`) are deferred to **M06**. Supabase Storage buckets and file uploads are deferred to **M07**.
 
 ---
 
-## 2. Helper Functions & Triggers
+## 2. Schemas & Authorization Infrastructure
 
-### 2.1 Function: `public.update_updated_at_column()`
-Automatically synchronizes the `updated_at` column whenever a record is modified.
+### 2.1 Private Schema Declaration
+Supabase's Data API (PostgREST) exposes the `public` schema by default. To create an impenetrable boundary for administrative credentials, we introduce an internal `private` schema:
 
 ```sql
-CREATE OR REPLACE FUNCTION public.update_updated_at_column()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-BEGIN
-  NEW.updated_at = pg_catalog.clock_timestamp();
-  RETURN NEW;
-END;
-$$;
+-- Create isolated private schema
+CREATE SCHEMA IF NOT EXISTS private;
 
--- Revoke default public execution; allow internal trigger invocation
-REVOKE EXECUTE ON FUNCTION public.update_updated_at_column() FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.update_updated_at_column() TO authenticated;
+-- Revoke all default public permissions
+REVOKE ALL ON SCHEMA private FROM PUBLIC, anon, authenticated;
+
+-- Grant USAGE to authenticated and anon so they can invoke private.is_admin() in RLS expressions
+GRANT USAGE ON SCHEMA private TO authenticated, anon;
 ```
 
-### 2.2 Function: `public.is_admin()`
-Evaluates whether the executing authenticated context belongs to an approved administrator by querying the `public.admin_users` whitelist.
+### 2.2 Table: `private.admin_users`
+Maintains the whitelist of `auth.users` UUIDs authorized to administer the portfolio.
+- **Storage Location**: `private` schema (completely hidden from PostgREST).
+- **Public & API Privileges**: Zero SQL privileges granted to `anon` or `authenticated`. Direct REST or GraphQL access is impossible.
+- **Population**: Admin accounts are provisioned exclusively out-of-band by the database owner via the Supabase Dashboard SQL Editor.
 
 ```sql
-CREATE OR REPLACE FUNCTION public.is_admin()
+CREATE TABLE private.admin_users (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT pg_catalog.clock_timestamp(),
+  CONSTRAINT chk_admin_users_email_valid CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
+);
+
+-- Completely revoke all privileges from API roles
+REVOKE ALL ON TABLE private.admin_users FROM PUBLIC, anon, authenticated;
+
+COMMENT ON TABLE private.admin_users IS 'Internal administrative whitelist table residing in unexposed private schema.';
+```
+
+### 2.3 Function: `private.is_admin()`
+Evaluates whether the executing authenticated context belongs to an authorized administrator.
+
+```sql
+CREATE OR REPLACE FUNCTION private.is_admin()
 RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
@@ -60,62 +68,33 @@ SET search_path = ''
 AS $$
   SELECT EXISTS (
     SELECT 1
-    FROM public.admin_users
+    FROM private.admin_users
     WHERE id = (SELECT auth.uid())
   );
 $$;
 
--- Restrict execution: anonymous visitors cannot run this function; authenticated users can
-REVOKE EXECUTE ON FUNCTION public.is_admin() FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+-- Ensure function ownership is assigned to postgres
+ALTER FUNCTION private.is_admin() OWNER TO postgres;
+
+-- Revoke execution from PUBLIC; grant explicitly to API roles
+REVOKE ALL ON FUNCTION private.is_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION private.is_admin() TO authenticated, anon;
+
+COMMENT ON FUNCTION private.is_admin() IS 'Hardened security-definer check verifying whether auth.uid() exists in private.admin_users.';
 ```
 
-### 2.3 Function: `public.sync_project_published_at()`
-Maintains publication timestamp integrity when project status transitions between `draft` and `published`.
-
-```sql
-CREATE OR REPLACE FUNCTION public.sync_project_published_at()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-BEGIN
-  IF NEW.status = 'published' AND OLD.published_at IS NULL THEN
-    NEW.published_at = pg_catalog.clock_timestamp();
-  ELSIF NEW.status = 'draft' THEN
-    NEW.published_at = NULL;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-REVOKE EXECUTE ON FUNCTION public.sync_project_published_at() FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.sync_project_published_at() TO authenticated;
-```
+#### Security Proof & Recursion Prevention:
+1. **Search Path Hijacking Defense**: `SET search_path = ''` forces full schema qualification (`private.admin_users`, `auth.uid()`), neutralizing malicious search-path override attacks.
+2. **Zero RLS Recursion**: `private.is_admin()` queries `private.admin_users`. `private.admin_users` has zero RLS policies calling `is_admin()`. It is protected by PostgreSQL schema and table privilege grants (`REVOKE ALL`). When invoked by RLS policies on `public.projects`, execution evaluates with an $O(1)$ primary-key index lookup and terminates immediately without recursion.
+3. **Immutable Identity**: Uses `auth.uid()`, which is cryptographically derived from the verified JWT `sub` claim. User-editable metadata (`raw_user_meta_data`) is completely ignored.
+4. **Anonymous Safety**: When invoked by unauthenticated callers, `auth.uid()` evaluates to `NULL`, returning `false` safely.
 
 ---
 
-## 3. Table Definitions (M02 Baseline)
+## 3. Core Domain Tables (`public` Schema)
 
-### 3.1 Table: `public.admin_users`
-Authorization table maintaining the list of `auth.users` UUIDs authorized to administer the portfolio.
-- **Population:** Provisioned exclusively out-of-band by the database owner.
-- **Self-Service:** Disallowed; zero public signups or auto-escalation.
-
-```sql
-CREATE TABLE public.admin_users (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT NOT NULL UNIQUE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT pg_catalog.clock_timestamp(),
-  CONSTRAINT chk_admin_users_email_valid CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
-);
-
-COMMENT ON TABLE public.admin_users IS 'Whitelist table storing administrative identities authorized to bypass public read restrictions.';
-```
-
-### 3.2 Table: `public.projects`
-Core showcase entity for software projects, research systems, and tools.
+### 3.1 Table: `public.projects`
+Showcase entity for software projects, research systems, and open-source tools.
 
 ```sql
 CREATE TABLE public.projects (
@@ -137,7 +116,7 @@ CREATE TABLE public.projects (
   created_at TIMESTAMPTZ NOT NULL DEFAULT pg_catalog.clock_timestamp(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT pg_catalog.clock_timestamp(),
 
-  -- Constraints
+  -- Integrity Constraints
   CONSTRAINT uq_projects_slug UNIQUE (slug),
   CONSTRAINT chk_projects_title_length CHECK (char_length(trim(title)) >= 2 AND char_length(title) <= 200),
   CONSTRAINT chk_projects_slug_format CHECK (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' AND char_length(slug) <= 100),
@@ -149,22 +128,11 @@ CREATE TABLE public.projects (
   CONSTRAINT chk_projects_technologies_dims CHECK (array_ndims(technologies) IS NULL OR array_ndims(technologies) = 1)
 );
 
--- Triggers on public.projects
-CREATE TRIGGER trg_projects_updated_at
-BEFORE UPDATE ON public.projects
-FOR EACH ROW
-EXECUTE FUNCTION public.update_updated_at_column();
-
-CREATE TRIGGER trg_projects_published_at
-BEFORE INSERT OR UPDATE ON public.projects
-FOR EACH ROW
-EXECUTE FUNCTION public.sync_project_published_at();
-
-COMMENT ON TABLE public.projects IS 'Showcase projects with draft/publish status and slug isolation.';
+COMMENT ON TABLE public.projects IS 'Showcase projects with draft/publish status and slug uniqueness.';
 ```
 
-### 3.3 Table: `public.project_media`
-Media assets (screenshots, architectural diagrams, demo captures) associated with projects.
+### 3.2 Table: `public.project_media`
+Screenshots, architecture diagrams, and interface captures belonging to projects.
 
 ```sql
 CREATE TABLE public.project_media (
@@ -176,157 +144,143 @@ CREATE TABLE public.project_media (
   sort_order INT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT pg_catalog.clock_timestamp(),
 
-  -- Constraints
+  -- Integrity Constraints
   CONSTRAINT chk_project_media_path CHECK (char_length(trim(storage_path)) >= 3 AND char_length(storage_path) <= 500),
   CONSTRAINT chk_project_media_alt_text CHECK (char_length(trim(alt_text)) >= 3 AND char_length(alt_text) <= 300),
   CONSTRAINT chk_project_media_sort_order CHECK (sort_order >= 0)
 );
 
-COMMENT ON TABLE public.project_media IS 'Ordered screenshots and media assets belonging to projects.';
+COMMENT ON TABLE public.project_media IS 'Relational media metadata linked to projects with cascade deletion.';
 ```
 
 ---
 
-## 4. Indexing Strategy
+## 4. Helper Functions & Automation Triggers
 
-Indexes are created to optimize high-frequency public reads and enforce relational integrity:
+### 4.1 Trigger Function: `public.update_updated_at_column()`
+```sql
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  NEW.updated_at = pg_catalog.clock_timestamp();
+  RETURN NEW;
+END;
+$$;
+
+ALTER FUNCTION public.update_updated_at_column() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.update_updated_at_column() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.update_updated_at_column() TO authenticated, anon;
+
+CREATE TRIGGER trg_projects_updated_at
+BEFORE UPDATE ON public.projects
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+```
+
+### 4.2 Trigger Function: `public.sync_project_published_at()`
+Ensures that publication timestamp semantics are strictly maintained by the database kernel:
+- When status changes to `published`, `published_at` is set to `clock_timestamp()` if not previously populated.
+- When status reverts to `draft`, `published_at` is cleared to `NULL`.
 
 ```sql
--- 1. Slug Lookup Index (Enforces instant O(1) project detail fetches)
--- Already guaranteed by UNIQUE constraint uq_projects_slug, creating index uq_projects_slug automatically.
+CREATE OR REPLACE FUNCTION public.sync_project_published_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF NEW.status = 'published' AND OLD.published_at IS NULL THEN
+    NEW.published_at = pg_catalog.clock_timestamp();
+  ELSIF NEW.status = 'draft' THEN
+    NEW.published_at = NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$;
 
--- 2. Partial Index for Public Published Projects (Used by / and /projects queries)
-CREATE INDEX idx_projects_public_published 
-ON public.projects (sort_order ASC, created_at DESC) 
+ALTER FUNCTION public.sync_project_published_at() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.sync_project_published_at() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.sync_project_published_at() TO authenticated;
+
+CREATE TRIGGER trg_projects_published_at
+BEFORE INSERT OR UPDATE ON public.projects
+FOR EACH ROW
+EXECUTE FUNCTION public.sync_project_published_at();
+```
+
+---
+
+## 5. Indexing Strategy
+
+Indexes are created strictly to accelerate high-frequency queries without unnecessary write-overhead:
+
+```sql
+-- 1. Slug Lookup Index (Instant O(1) project detail fetches)
+-- Generated automatically by the UNIQUE constraint: uq_projects_slug
+
+-- 2. Partial Index for Public Published Projects (Homepage & Project List SSR)
+CREATE INDEX idx_projects_public_published
+ON public.projects (sort_order ASC, created_at DESC)
 WHERE status = 'published';
 
--- 3. Partial Index for Featured Public Projects (Used by Homepage Hero / Featured section)
-CREATE INDEX idx_projects_public_featured 
-ON public.projects (sort_order ASC, created_at DESC) 
+-- 3. Partial Index for Featured Public Projects (Homepage Featured Showcase)
+CREATE INDEX idx_projects_public_featured
+ON public.projects (sort_order ASC, created_at DESC)
 WHERE status = 'published' AND featured = true;
 
--- 4. Status Filter Index (Used by Admin dashboard views)
-CREATE INDEX idx_projects_status 
+-- 4. Status Filter Index (Admin Dashboard Filtering)
+CREATE INDEX idx_projects_status
 ON public.projects (status);
 
--- 5. Project Media Foreign Key & Ordering Index
-CREATE INDEX idx_project_media_project_order 
+-- 5. Foreign Key & Media Ordering Index (Project Media Eager Fetches)
+CREATE INDEX idx_project_media_project_order
 ON public.project_media (project_id, sort_order ASC);
 ```
 
 ---
 
-## 5. Privilege Management (SQL Grants)
+## 6. Table Grants & Privilege Management
 
-PostgreSQL permissions are explicitly revoked from `PUBLIC` and restricted per role:
+PostgreSQL permissions are configured with minimal privileges per role:
 
 ```sql
 -- Revoke all default table privileges
-REVOKE ALL ON TABLE public.admin_users FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON TABLE public.projects FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON TABLE public.project_media FROM PUBLIC, anon, authenticated;
 
--- admin_users grants:
--- anon has zero access. Authenticated users may SELECT only through RLS.
-GRANT SELECT ON TABLE public.admin_users TO authenticated;
-
--- projects grants:
--- anon may read (RLS limits to published)
+-- public.projects grants:
+-- Anonymous visitors can only SELECT (RLS limits to status = 'published')
 GRANT SELECT ON TABLE public.projects TO anon;
--- authenticated may read, insert, update, delete (RLS gates mutations to admins)
+-- Authenticated users can SELECT, INSERT, UPDATE, DELETE (RLS gates mutations to admins)
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.projects TO authenticated;
 
--- project_media grants:
--- anon may read (RLS limits to media of published projects)
+-- public.project_media grants:
+-- Anonymous visitors can only SELECT (RLS limits to media of published projects)
 GRANT SELECT ON TABLE public.project_media TO anon;
--- authenticated may mutate (RLS gates to admins)
+-- Authenticated users can SELECT, INSERT, UPDATE, DELETE (RLS gates mutations to admins)
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.project_media TO authenticated;
 ```
 
 ---
 
-## 6. Forward-Compatible Specifications for M06 Tables
+## 7. Forward-Compatible Specifications for M06 Tables
 
-The following entities are designed now for relational harmony, but will be created in **M06** via additive migrations:
-
-### 6.1 `public.site_profile` (Deferred to M06)
-```sql
--- Single-row editable biographical metadata
-CREATE TABLE public.site_profile (
-  id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1), -- Singleton constraint
-  full_name TEXT NOT NULL,
-  headline TEXT NOT NULL,
-  bio_short TEXT NOT NULL,
-  bio_full TEXT,
-  location TEXT NOT NULL,
-  available_for_hire BOOLEAN NOT NULL DEFAULT false,
-  github_url TEXT,
-  linkedin_url TEXT,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT pg_catalog.clock_timestamp()
-);
-```
-
-### 6.2 `public.experiences` (Deferred to M06)
-```sql
-CREATE TABLE public.experiences (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  company TEXT NOT NULL,
-  role TEXT NOT NULL,
-  start_date DATE NOT NULL,
-  end_date DATE,
-  is_current BOOLEAN NOT NULL DEFAULT false,
-  description TEXT NOT NULL,
-  sort_order INT NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT pg_catalog.clock_timestamp()
-);
-```
-
-### 6.3 `public.education` (Deferred to M06)
-```sql
-CREATE TABLE public.education (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  institution TEXT NOT NULL,
-  degree TEXT NOT NULL,
-  field_of_study TEXT NOT NULL,
-  start_year INT NOT NULL,
-  end_year INT,
-  grade TEXT,
-  sort_order INT NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT pg_catalog.clock_timestamp()
-);
-```
-
-### 6.4 `public.skills` (Deferred to M06)
-```sql
-CREATE TABLE public.skills (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL UNIQUE,
-  category TEXT NOT NULL CHECK (category IN ('Languages', 'Frameworks & Libraries', 'Databases & Tools', 'Architectures & Paradigms')),
-  proficiency TEXT,
-  sort_order INT NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT pg_catalog.clock_timestamp()
-);
-```
-
-### 6.5 `public.certifications` (Deferred to M06)
-```sql
-CREATE TABLE public.certifications (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  issuer TEXT NOT NULL,
-  issue_date DATE NOT NULL,
-  credential_url TEXT,
-  sort_order INT NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT pg_catalog.clock_timestamp()
-);
-```
+The secondary tables (`site_profile`, `experiences`, `education`, `skills`, `certifications`) are fully documented in the v0.1 specification and will be created via additive migrations in **M06**. They will follow the exact same security conventions established here:
+- Reside in `public` with `REVOKE ALL FROM PUBLIC`.
+- Read access granted to `anon` and `authenticated`.
+- Mutation access granted to `authenticated` and gated strictly by `private.is_admin()`.
 
 ---
 
-## 7. Migration File Organization Plan
+## 8. Migration File Organization Plan
 
-The migrations will be stored in `supabase/migrations/` using timestamp prefixes:
-- `20261116000001_create_admin_users.sql`: `admin_users` table, `is_admin()` function, SQL grants, and RLS policies.
-- `20261116000002_create_projects.sql`: `projects` table, constraints, timestamps, updated_at trigger, indexes, SQL grants, and RLS policies.
-- `20261116000003_create_project_media.sql`: `project_media` table, cascade foreign key, indexes, SQL grants, and RLS policies.
-- `supabase/seed.sql`: Realistic test fixtures containing published projects, draft projects, and media attachments for automated verification.
+Migrations will reside in `supabase/migrations/` using chronological UTC timestamps:
+1. `20261116000001_create_private_schema_and_admin_users.sql`: Schema `private`, table `private.admin_users`, function `private.is_admin()`, ownership, and grants.
+2. `20261116000002_create_projects.sql`: Table `public.projects`, constraints, indexes, triggers, grants, and RLS policies.
+3. `20261116000003_create_project_media.sql`: Table `public.project_media`, cascade foreign key, index, grants, and RLS policies.
+4. `supabase/seed.sql`: Local/testing development fixtures containing published and draft projects. Strictly prohibited from running on production.
