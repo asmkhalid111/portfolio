@@ -77,3 +77,25 @@
   2. *Server-Side Authorization:* Server Actions validate inputs via Zod and verify `auth.uid()` against `public.admin_users`.
   3. *Database Table Grants & RLS:* PostgreSQL enforces granular table-level `GRANT` permissions and Row-Level Security policies. Functions use `SECURITY DEFINER SET search_path = ''` with execution revoked from `PUBLIC` and `anon`. Initial admin accounts are provisioned strictly out-of-band.
 - **Consequences:** Even if client-side or edge checks are bypassed, the database layer rejects unauthorized mutations.
+
+---
+
+## ADR-007: Git Branching Model, Commit Conventions & Milestone Tagging
+- **Status:** **ACCEPTED** (M01 Gate B1).
+- **Date:** 2026-11-15.
+- **Context:** A predictable, auditable version-control workflow is required for academic assessment and multi-agent coordination. Blind staging or unstructured commits compromise traceability.
+- **Decision:**
+  1. *Branching Strategy:* The `main` branch represents reviewed, stable project state. Milestone work and features use short-lived branches (`feat/m02-database`, `feat/m03-auth`, `feat/m04-projects-crud`, `fix/<description>`). Branches are merged only after successful verification and audit acceptance.
+  2. *Commit Standards:* Strict Conventional Commits specification (`feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`). Explicit file staging only (no blind `git add .`).
+  3. *Release Tagging:* Milestone tags (e.g. annotated tag `m01-complete`) are created only when a milestone has passed its final audit and has been approved by the Project Owner. Never create retrospective tags across unverified code snapshots.
+  4. *Safety Invariants:* No force-pushing, history rewriting, or destructive resets on shared or baseline branches.
+- **Consequences:** Provides reproducible traceability, clean commit logs, and unambiguous milestone demarcation.
+
+---
+
+## ADR-008: Tailwind CSS v4 Build Pipeline via PostCSS Integration
+- **Status:** **ACCEPTED** (M01 Gate B1).
+- **Date:** 2026-11-15.
+- **Context:** Initial scaffolding configured `@tailwindcss/turbopack` loader rules in `next.config.ts`. However, `@tailwindcss/turbopack` is an early Turbopack-specific loader whose official release notes began in Tailwind v4.3.4, whereas the official Tailwind CSS v4 guide for Next.js specifies `@tailwindcss/postcss` with `postcss.config.mjs`.
+- **Decision:** Standardize on the official Tailwind/PostCSS integration (`@tailwindcss/postcss` + `postcss` in `postcss.config.mjs`) and remove dedicated `turbopack.rules` from `next.config.ts`.
+- **Consequences:** Eliminates loader fragility, avoids duplicate/conflicting CSS processing pipelines, supports both Turbopack and Webpack transparently, and outputs modern wide-gamut CSS color functions (`lab`/`oklch`) verified via browser-level computed-style tests.

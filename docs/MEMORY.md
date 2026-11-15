@@ -1,9 +1,10 @@
 # Project Memory — Durable State & Architecture Context
 
 > **Last Updated:** 2026-11-15  
-> **Current State:** **M01 GATE A COMPLETED — AWAITING CHATGPT AUDIT & OWNER AUTHORIZATION FOR GATE B**  
-> **Active Milestone:** `docs/milestones/M01-foundation/PLAN.md` (v0.2)  
-> **Gate A Report:** `docs/milestones/M01-foundation/GATE_A_REPORT.md` (Local Foundation Verified)
+> **Current State:** **M01 GATE B1 COMPLETED — LOCAL GIT BASELINE CREATED (Gate B2 Unauthorized)**  
+> **Active Milestone:** `docs/milestones/M01-foundation/PLAN.md` (v0.3)  
+> **Gate A Report:** `docs/milestones/M01-foundation/GATE_A_REPORT.md` (Accepted by ChatGPT)  
+> **Gate B1 Report:** `docs/milestones/M01-foundation/GATE_B_LOCAL_REPORT.md` (Local Git Baseline Verified)
 
 ---
 
@@ -41,17 +42,18 @@
   - ChatGPT Completion Audit: **PASSED**.
   - Final Milestone Status: **ACCEPTED**.
 - **M01 (Environment, Foundation & First Deploy):**
-  - Implementation Plan: `docs/milestones/M01-foundation/PLAN.md` (v0.2).
-  - Gate A Status: **COMPLETED & LOCALLY VERIFIED**.
-  - Local Quality Gates: All 5 passed (`lint`, `typecheck`, `test`, `build`, `test:e2e`).
-  - Report created: `docs/milestones/M01-foundation/GATE_A_REPORT.md`.
-  - Git repository status: **NOT INITIALIZED** (strictly deferred to Gate B).
-  - Remote cloud status: **NO REMOTE RESOURCES ACCESSED OR CREATED** (deferred to Gate B & C).
+  - Implementation Plan: `docs/milestones/M01-foundation/PLAN.md` (v0.3).
+  - Gate A Status: **COMPLETED, VERIFIED & ACCEPTED BY CHATGPT**.
+  - Gate B1 Status: **COMPLETED & LOCALLY COMMITTED**.
+  - Initial Local Commit: `15320cfabbcaf7801f3821fd107a9ec812a60fb6` (`chore(repo): initialize portfolio foundation and local quality gates`).
+  - Git repository status: **INITIALIZED ON BRANCH `main`**; zero remotes configured; no push executed.
+  - Remote cloud status: **NO REMOTE RESOURCES ACCESSED OR CREATED** (Gate B2 & C unauthorized).
+  - Reports: `docs/milestones/M01-foundation/GATE_A_REPORT.md` and `docs/milestones/M01-foundation/GATE_B_LOCAL_REPORT.md`.
 
 ---
 
 ## 4. Next Actions
 
-1. Independent audit of `docs/milestones/M01-foundation/GATE_A_REPORT.md` by ChatGPT.
-2. Explicit Project Owner authorization to proceed with Gate B (Git initialization, initial commit, GitHub remote creation).
-3. Explicit Project Owner authorization for Gate C (Vercel project linking and initial preview/production deployment).
+1. Independent audit of `docs/milestones/M01-foundation/GATE_B_LOCAL_REPORT.md` by ChatGPT.
+2. Explicit Project Owner authorization to proceed with Gate B2 (public GitHub repository creation via `gh repo create asmkhalid111/portfolio`, origin configuration, and main branch push).
+3. Subsequent Project Owner authorization for Gate C (Vercel Hobby project linking and initial live deployment).

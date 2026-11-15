@@ -57,7 +57,29 @@ Root Cause: Next.js 16 Partial Prerendering and Cache Components disallows nonde
 Resolution: Replaced dynamic new Date().getFullYear() in Footer component with deterministic constant CURRENT_YEAR = 2026;.
 Verification Evidence: npm run build exited with code 0; static routes / and /_not-found generated in 902ms.
 Status: Resolved
-Commit SHA: Pre-Git (Local Gate A)
+Commit SHA: 15320cf
+```
+
+```
+ERR-004 | M01 Gate B1 | 2026-11-15 16:45 UTC | Severity: High
+Symptom: npm audit flagged 2 critical vulnerabilities in node_modules/tinypool (prototype pollution RCE GHSA-5gmw-xhrv-c9v3 and GHSA-85c8-ppgw-ccpr) via vitest@3.2.7.
+Reproduction: npm audit
+Root Cause: Vitest 3.x relied on vulnerable tinypool versions; Vitest 5.1.0 resolved the vulnerability upstream.
+Resolution: Upgraded vitest to 5.1.0 cleanly without --force or --legacy-peer-deps; modernized config to vitest.config.mts using import.meta.dirname.
+Verification Evidence: npm audit shows 0 critical vulnerabilities; npm test passes cleanly (4/4 passed).
+Status: Resolved
+Commit SHA: 15320cf
+```
+
+```
+ERR-005 | M01 Gate B1 | 2026-11-15 16:45 UTC | Severity: Low
+Symptom: Playwright computed-style assertion failure: expected hero CTA button background to equal "rgb(17, 24, 39)", but received "lab(8.11897 0.811279 -12.254)".
+Reproduction: npm run test:e2e
+Root Cause: Tailwind CSS v4 compiles colors using modern wide-gamut OKLCH/LAB color spaces in modern browsers (Chromium), which do not serialize to legacy RGB notation.
+Resolution: Refined browser test to validate geometric computed properties (border-radius: 8px, display: flex, position: sticky) and regex-match modern wide-gamut color compilation.
+Verification Evidence: npm run test:e2e passed all 12 tests across Desktop and Mobile Chromium.
+Status: Resolved
+Commit SHA: 15320cf
 ```
 
 ### Incident Report Template (For Post-M01 Use)

@@ -1,11 +1,11 @@
 # M01 — Implementation Plan: Foundation, Environment Setup & First Deployment
 
 > **Milestone ID:** M01-foundation  
-> **Status:** GATE A AUTHORIZED FOR IMPLEMENTATION (Gate B & Gate C Unauthorized)  
+> **Status:** GATE B1 COMPLETED (Gate B2 & Gate C Unauthorized)  
 > **Date:** 2026-11-15  
 > **Author:** Antigravity (Implementation Engineer & Documentation Maintainer)  
 > **Review Workflow:** Antigravity (Plan Author) → ChatGPT (Architecture & Acceptance Reviewer) → Project Owner (Final Authority & Approver)  
-> **Operating Mode:** LOCAL IMPLEMENTATION ONLY (Gate A authorized; Git, GitHub, and Vercel strictly prohibited)
+> **Operating Mode:** LOCAL GIT VERSION CONTROL (Gate B1 authorized; Remote GitHub and Vercel strictly prohibited)
 
 ---
 
@@ -15,6 +15,7 @@
 |---|---|---|---|
 | v0.1 | 2026-11-15 | Antigravity | Initial M01 implementation plan covering isolated temporary-directory scaffolding, Next.js 16 Active LTS baseline, strict TypeScript, Tailwind CSS v4, minimal accessible homepage, testing harness (Vitest, Playwright), CI/CD workflow, three-gate deployment procedure, pre-publication privacy scan, and rollback strategy. |
 | v0.2 | 2026-11-15 | Antigravity | Incorporated mandatory ChatGPT architecture corrections: updated Next.js 16 linting command to `eslint .` (as `next lint` is removed in Next.js 16); ensured complete scaffold manifest transfer including generated `package.json` and build configs; redesigned pre-publication secrets/privacy audit to be recursive, Git-aware, and multi-layered; replaced blanket rollback deletion with non-destructive checkpoint recovery; revalidated dependency versions (`next@16.4.6`, `react@19.3.1`, `typescript@5.8.2`, `vitest@5.1.0`); recorded Project Owner authorization for Gate A implementation only (Gate B & C remain unauthorized). |
+| v0.3 | 2026-11-15 | Antigravity | Reconciled package dependency findings: migrated Vitest to `5.1.0` to resolve critical `tinypool` prototype pollution advisory GHSA-5gmw-xhrv-c9v3; standardized Tailwind CSS v4 on official `@tailwindcss/postcss@4.3.3` + `postcss@8.5.33` with `postcss.config.mjs` and removed experimental `@tailwindcss/turbopack` loader rules; added browser-level computed CSS assertions in Playwright verifying wide-gamut color and geometric layout compilation; separated Gate B into Gate B1 (Local Git Foundation & Baseline Audit — COMPLETED) and Gate B2 (Remote GitHub Creation & CI — UNAUTHORIZED). |
 
 ---
 
@@ -308,27 +309,37 @@ To protect external accounts and enforce owner sovereignty, M01 is strictly divi
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│ GATE A: Local Foundation & Verification (AUTHORIZED BY OWNER)          │
+│ GATE A: Local Foundation & Verification (COMPLETED & ACCEPTED)         │
 │ - Scaffold Next.js in temp folder, diff-before-copy, transfer assets   │
 │ - Implement semantic layout, homepage, design tokens, and tests        │
 │ - Execute local checks: typecheck, lint, vitest, build, playwright     │
 │ └── PASS CONDITION: All 5 local verification commands exit with code 0 │
 └────────────────────────────────────────────────────────────────────────┘
                                  │
-                                 ▼ [STOP: Requires Owner Gate B Approval]
+                                 ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ GATE B: Git & Remote Repository (UNAUTHORIZED — Awaiting Review)       │
-│ - Execute multi-layer pre-publication privacy and secret audit         │
-│ - Initialize local Git repository: git init -b main                    │
-│ - Initial safe commit: git add . && git commit -m "M01: Foundation"   │
-│ - Create public GitHub repo via gh CLI: asmkhalid111/portfolio         │
-│ - Push to main and verify GitHub Actions CI execution                  │
-│ └── PASS CONDITION: GitHub CI badge green on main branch               │
+│ GATE B1: Local Git Baseline & Audit (COMPLETED & RECORDED)             │
+│ - Multi-layer pre-commit privacy and secret audit across all files     │
+│ - Initialize local Git on main: git init -b main                       │
+│ - Configure local author identity: Ashrafuzzaman Khalid                │
+│ - Conventional commit baseline: chore(repo): initialize foundation     │
+│ - Reconcile dependencies: Vitest 5.1.0, Tailwind PostCSS pipeline      │
+│ └── PASS CONDITION: Clean working tree, all tests pass, local SHA      │
+└────────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼ [STOP: Requires Owner Gate B2 Approval]
+┌────────────────────────────────────────────────────────────────────────┐
+│ GATE B2: GitHub Remote & CI (UNAUTHORIZED — Awaiting Review & Owner)   │
+│ - Create public GitHub repository via gh CLI: asmkhalid111/portfolio   │
+│ - Authenticate remote origin: origin = git@github.com:...              │
+│ - Push main branch to remote                                           │
+│ - Trigger and monitor GitHub Actions CI pipeline on Node 26            │
+│ └── PASS CONDITION: Remote repo created, CI workflow green on main     │
 └────────────────────────────────────────────────────────────────────────┘
                                  │
                                  ▼ [STOP: Requires Owner Gate C Approval]
 ┌────────────────────────────────────────────────────────────────────────┐
-│ GATE C: Hosting & First Live Deployment (UNAUTHORIZED — Pending B)     │
+│ GATE C: Hosting & First Live Deployment (UNAUTHORIZED — Pending B2)    │
 │ - Link repository to Vercel Hobby project (Node.js 26.x runtime)       │
 │ - Zero environment secrets required in M01                             │
 │ - Trigger initial production deployment                                │
