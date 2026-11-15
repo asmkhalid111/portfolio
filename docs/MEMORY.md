@@ -1,15 +1,12 @@
 # Project Memory — Durable State & Architecture Context
 
 > **Last Updated:** 2026-11-16  
-> **Current State:** **M01 COMPLETED & FINALIZED — RELEASE TAG m01-complete TARGETING 699cfd0 — NEXT: M02 PLANNING**  
-> **Active Milestone:** `docs/milestones/M01-foundation/COMPLETION.md` (Accepted & Closed)  
-> **Gate A Report:** `docs/milestones/M01-foundation/GATE_A_REPORT.md` (Accepted by ChatGPT)  
-> **Gate B1 Report:** `docs/milestones/M01-foundation/GATE_B_LOCAL_REPORT.md` (Accepted by ChatGPT)  
-> **Gate B2A Report:** `docs/milestones/M01-foundation/GATE_B_PRIVACY_REPORT.md` (History Sanitization Verified)  
-> **Gate B2 Report:** `docs/milestones/M01-foundation/GATE_B_GITHUB_REPORT.md` (Repository Published, CI Blocked)  
-> **Gate C Preparation:** `docs/milestones/M01-foundation/GATE_C_PREPARATION.md` (Deployment Checklist & CI Waiver)  
-> **Gate C Report:** `docs/milestones/M01-foundation/GATE_C_DEPLOYMENT_REPORT.md` (Live Deployment Verified)  
-> **M01 Completion Report:** `docs/milestones/M01-foundation/COMPLETION.md` (Milestone Finalized)
+> **Current State:** **M02 PLANNING (GATE A) — BRANCH feat/m02-database — AWAITING CHATGPT AUDIT & OWNER APPROVAL**  
+> **Active Milestone:** `docs/milestones/M02-database/PLAN.md` (Awaiting Review)  
+> **M01 Completion Report:** `docs/milestones/M01-foundation/COMPLETION.md` (Accepted & Finalized, Tag `m01-complete` at `699cfd0`)  
+> **M02 Plan:** `docs/milestones/M02-database/PLAN.md` (Draft v0.1)  
+> **M02 Schema Spec:** `docs/milestones/M02-database/SCHEMA_SPEC.md` (Draft v0.1)  
+> **M02 RLS Matrix:** `docs/milestones/M02-database/RLS_MATRIX.md` (Draft v0.1)
 
 ---
 
@@ -68,7 +65,8 @@
 
 ## 4. Next Actions
 
-1. Await ChatGPT final release audit of Milestone M01.
-2. Initiate Milestone M02 (Database Integration & RLS Foundation) planning: draft `docs/milestones/M02-database/PLAN.md`.
-3. Project Owner provisions Supabase cloud project upon explicit M02 planning authorization.
-4. Prepare M02 feature branch: `feat/m02-database`. Do not implement code or migrations prior to explicit owner authorization.
+1. Await ChatGPT architecture and security audit of Milestone M02 Gate A planning documents (`docs/milestones/M02-database/PLAN.md`, `SCHEMA_SPEC.md`, `RLS_MATRIX.md`).
+2. Project Owner reviews ChatGPT audit and provides explicit authorization for Gate B (Supabase provisioning).
+3. Upon Gate B authorization, Project Owner provisions Supabase free-tier project and populates `.env.local` with real credentials.
+4. Antigravity proceeds to Gate B (local configuration, package install, `.env.example`).
+5. Strictly NO database code implementation, migration execution, or cloud modifications until gated authorization is received.
