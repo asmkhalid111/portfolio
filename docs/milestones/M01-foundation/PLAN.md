@@ -1,11 +1,11 @@
 # M01 — Implementation Plan: Foundation, Environment Setup & First Deployment
 
 > **Milestone ID:** M01-foundation  
-> **Status:** GATE B1 COMPLETED (Gate B2 & Gate C Unauthorized)  
+> **Status:** GATE B2A COMPLETED (Gate B2 Remote Publication & Gate C Unauthorized)  
 > **Date:** 2026-11-15  
 > **Author:** Antigravity (Implementation Engineer & Documentation Maintainer)  
 > **Review Workflow:** Antigravity (Plan Author) → ChatGPT (Architecture & Acceptance Reviewer) → Project Owner (Final Authority & Approver)  
-> **Operating Mode:** LOCAL GIT VERSION CONTROL (Gate B1 authorized; Remote GitHub and Vercel strictly prohibited)
+> **Operating Mode:** LOCAL GIT HISTORY SANITIZATION COMPLETE (Remote GitHub and Vercel strictly prohibited)
 
 ---
 
@@ -16,6 +16,7 @@
 | v0.1 | 2026-11-15 | Antigravity | Initial M01 implementation plan covering isolated temporary-directory scaffolding, Next.js 16 Active LTS baseline, strict TypeScript, Tailwind CSS v4, minimal accessible homepage, testing harness (Vitest, Playwright), CI/CD workflow, three-gate deployment procedure, pre-publication privacy scan, and rollback strategy. |
 | v0.2 | 2026-11-15 | Antigravity | Incorporated mandatory ChatGPT architecture corrections: updated Next.js 16 linting command to `eslint .` (as `next lint` is removed in Next.js 16); ensured complete scaffold manifest transfer including generated `package.json` and build configs; redesigned pre-publication secrets/privacy audit to be recursive, Git-aware, and multi-layered; replaced blanket rollback deletion with non-destructive checkpoint recovery; revalidated dependency versions (`next@16.4.6`, `react@19.3.1`, `typescript@5.8.2`, `vitest@5.1.0`); recorded Project Owner authorization for Gate A implementation only (Gate B & C remain unauthorized). |
 | v0.3 | 2026-11-15 | Antigravity | Reconciled package dependency findings: migrated Vitest to `5.1.0` to resolve critical `tinypool` prototype pollution advisory GHSA-5gmw-xhrv-c9v3; standardized Tailwind CSS v4 on official `@tailwindcss/postcss@4.3.3` + `postcss@8.5.33` with `postcss.config.mjs` and removed experimental `@tailwindcss/turbopack` loader rules; added browser-level computed CSS assertions in Playwright verifying wide-gamut color and geometric layout compilation; separated Gate B into Gate B1 (Local Git Foundation & Baseline Audit — COMPLETED) and Gate B2 (Remote GitHub Creation & CI — UNAUTHORIZED). |
+| v0.4 | 2026-11-15 | Antigravity | Gate B2A Git Email Privacy Correction: verified Project Owner's official GitHub noreply address (`130174468+asmkhalid111@users.noreply.github.com`) via GitHub CLI and verified historical commits; created local recovery checkpoint; sanitized commit author/committer metadata and historical tracked documentation; purged unreferenced Next.js default sample SVGs; verified zero occurrences of personal email across all historical commits and trees. Remote publication remains unauthorized. |
 
 ---
 

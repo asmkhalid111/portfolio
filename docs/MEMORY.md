@@ -1,11 +1,12 @@
 # Project Memory — Durable State & Architecture Context
 
 > **Last Updated:** 2026-11-15  
-> **Current State:** **M01 GATE B2 PUBLICATION PREPARATION COMPLETED — AWAITING OWNER AUTHORIZATION & EMAIL PRIVACY DECISION**  
-> **Active Milestone:** `docs/milestones/M01-foundation/PLAN.md` (v0.3)  
+> **Current State:** **M01 GATE B2A COMPLETED — LOCAL GIT HISTORY FULLY SANITIZED WITH VERIFIED NOREPLY EMAIL**  
+> **Active Milestone:** `docs/milestones/M01-foundation/PLAN.md` (v0.4)  
 > **Gate A Report:** `docs/milestones/M01-foundation/GATE_A_REPORT.md` (Accepted by ChatGPT)  
 > **Gate B1 Report:** `docs/milestones/M01-foundation/GATE_B_LOCAL_REPORT.md` (Accepted by ChatGPT)  
-> **Gate B2 Report:** `docs/milestones/M01-foundation/GATE_B_GITHUB_REPORT.md` (Publication Preparation Ready)
+> **Gate B2 Report:** `docs/milestones/M01-foundation/GATE_B_GITHUB_REPORT.md` (Sanitized Publication Preparation Ready)  
+> **Gate B2A Report:** `docs/milestones/M01-foundation/GATE_B_PRIVACY_REPORT.md` (History Sanitization Verified)
 
 ---
 
@@ -43,20 +44,21 @@
   - ChatGPT Completion Audit: **PASSED**.
   - Final Milestone Status: **ACCEPTED**.
 - **M01 (Environment, Foundation & First Deploy):**
-  - Implementation Plan: `docs/milestones/M01-foundation/PLAN.md` (v0.3).
+  - Implementation Plan: `docs/milestones/M01-foundation/PLAN.md` (v0.4).
   - Gate A Status: **COMPLETED, VERIFIED & ACCEPTED BY CHATGPT**.
   - Gate B1 Status: **COMPLETED & LOCALLY COMMITTED**.
-  - Gate B2 Status: **PUBLICATION PREPARATION COMPLETE — AWAITING EXPLICIT OWNER AUTHORIZATION**.
-  - Commit History: `15320cf` (Foundation baseline) and `c706dcc` (Gate B1 documentation baseline).
+  - Gate B2A Status: **LOCAL PRIVACY CORRECTION COMPLETE & VERIFIED**.
+  - Verified Git Author: `Ashrafuzzaman Khalid <130174468+asmkhalid111@users.noreply.github.com>`.
+  - Sanitized Commit History on `main`: `7d029fb`, `e5f7d79`, `f69fbe2` (zero personal email occurrences in tree or commit metadata).
   - Git repository status: **INITIALIZED ON BRANCH `main`**; zero remotes configured; no push executed.
   - Remote cloud status: **NO REMOTE RESOURCES ACCESSED OR CREATED** (GitHub and Vercel unauthorized).
-  - Reports: `docs/milestones/M01-foundation/GATE_A_REPORT.md`, `GATE_B_LOCAL_REPORT.md`, and `GATE_B_GITHUB_REPORT.md`.
+  - Reports: `docs/milestones/M01-foundation/GATE_A_REPORT.md`, `GATE_B_LOCAL_REPORT.md`, `GATE_B_GITHUB_REPORT.md`, and `GATE_B_PRIVACY_REPORT.md`.
 
 ---
 
 ## 4. Next Actions
 
-1. Project Owner decision on Git author email privacy (GitHub noreply address vs personal Gmail publication approval).
+1. Independent audit of `docs/milestones/M01-foundation/GATE_B_PRIVACY_REPORT.md` by ChatGPT.
 2. Explicit Project Owner authorization phrase: `"I AUTHORIZE M01 GATE B2: CREATE AND PUSH THE PUBLIC GITHUB REPOSITORY."`
 3. Controlled execution of Gate B2: create `asmkhalid111/portfolio`, configure origin, push audited `main`, and verify GitHub Actions CI execution.
 4. Subsequent Project Owner authorization for Gate C (Vercel deployment).
