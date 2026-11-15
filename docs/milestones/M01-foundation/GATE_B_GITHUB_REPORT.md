@@ -1,105 +1,144 @@
-# M01 — Gate B2: GitHub Publication Preparation and Controlled Release Report
+# M01 — Gate B2: Public GitHub Repository Creation, Initial Push & CI Verification Report
 
 **Milestone:** M01 — Foundation, Environment Setup & First Deployment  
-**Gate:** Gate B2 (GitHub Publication Preparation & Release Gate)  
-**Status:** READY FOR PUBLICATION — AWAITING EXPLICIT OWNER AUTHORIZATION & EMAIL PRIVACY DECISION  
+**Gate:** Gate B2 (GitHub Publication & CI Verification)  
+**Status:** REPOSITORY CREATED & PUSHED — CI BLOCKED ON GITHUB ACCOUNT BILLING RESOLUTION  
 **Date:** November 15, 2026  
 **Operating Workspace:** `E:\Codes\Portfolio`  
 **Git Branch:** `main`  
-**Remote Status:** No remote configured (Zero public calls executed)  
-**Governing Plan:** `docs/milestones/M01-foundation/PLAN.md` (v0.3)  
+**GitHub Repository:** [https://github.com/asmkhalid111/portfolio](https://github.com/asmkhalid111/portfolio)  
+**Visibility:** `PUBLIC`  
+**Initial Pushed Commit SHA:** `5a2a117fde783a57a15eb939385ecd45d497a300`  
+**Configured Remote:** `origin = https://github.com/asmkhalid111/portfolio.git`  
+**Author Identity:** `Ashrafuzzaman Khalid <130174468+asmkhalid111@users.noreply.github.com>`  
+**Governing Plan:** `docs/milestones/M01-foundation/PLAN.md` (v0.4)  
 
 ---
 
-## 1. Publication Decision & Authorization Status
+## 1. Project Owner Authorization
 
-In strict accordance with the Workspace Agent Contract ([AGENTS.md](file:///E:/Codes/Portfolio/AGENTS.md)) and the Gate B2 governance instructions:
-
-- **Current Authorization State:** **NOT AUTHORIZED FOR REMOTE REPOSITORY CREATION OR PUSH**.
-- **Hard Gate Constraint:** No GitHub repository was created and no Git push was attempted. Remote operations require the exact, unprompted authorization phrase from the Project Owner:  
-  `"I AUTHORIZE M01 GATE B2: CREATE AND PUSH THE PUBLIC GITHUB REPOSITORY."`
-- **Current Operational Mode:** Local publication audit, asset hygiene cleanup, privacy inspection, and verification complete.
+- **Authorization Received:** The Project Owner explicitly authorized:  
+  `"I AUTHORIZE M01 GATE B2: CREATE AND PUSH THE PUBLIC GITHUB REPOSITORY. I approve publication of the current sanitized portfolio content."`
+- **Scope Observed:** Created the public repository `asmkhalid111/portfolio`, configured the `origin` remote, and pushed `main` normally without force. Zero Vercel linking/deployment and zero Supabase provisioning occurred.
 
 ---
 
-## 2. Mandatory Git Author Email Privacy Findings
+## 2. Git Privacy & Email Sanitization Verification
 
-A comprehensive inspection of author and committer identities across all existing local commits revealed:
+Prior to remote repository creation, all local commits were verified:
 
-```
-786092af554373021aecf7f1bad92f4816d51ec6 | Ashrafuzzaman Khalid <[REDACTED — PRIVATE EMAIL]> | Ashrafuzzaman Khalid <[REDACTED — PRIVATE EMAIL]>
-c706dccda3f17af6b7f7a55d5208758b8576291a | Ashrafuzzaman Khalid <[REDACTED — PRIVATE EMAIL]> | Ashrafuzzaman Khalid <[REDACTED — PRIVATE EMAIL]>
-15320cfabbcaf7801f3821fd107a9ec812a60fb6 | Ashrafuzzaman Khalid <[REDACTED — PRIVATE EMAIL]> | Ashrafuzzaman Khalid <[REDACTED — PRIVATE EMAIL]>
-```
-
-### Privacy Assessment
-1. **Public Exposure Risk:** Once Git commits are pushed to a public GitHub repository, the commit metadata (`Author` and `Committer` email strings) becomes globally readable, permanently immutable in standard Git mirrors, and crawlable by web bots and scrapers.
-2. **Tracked Documentation Audit:** The personal Gmail address appears only in internal milestone documentation ([GATE_B_LOCAL_REPORT.md](file:///E:/Codes/Portfolio/docs/milestones/M01-foundation/GATE_B_LOCAL_REPORT.md)) recording the local author configuration. It is strictly absent from all public UI components, metadata, and application code.
-3. **Recommendation:** To protect the Project Owner's personal inbox from spam and scraping, it is strongly recommended to use GitHub's standard email-masking noreply address (e.g., `<id>+asmkhalid111@users.noreply.github.com` or `asmkhalid111@users.noreply.github.com`).
-4. **Action Required from Owner:** The agent cannot invent or assume the noreply ID. The owner must choose between:
-   - **Option A (Email Privacy):** Provide the exact GitHub noreply address from GitHub Settings -> Emails -> "Keep my email addresses private", and explicitly authorize a controlled local history rewrite of the two unpushed commits before pushing.
-   - **Option B (Public Email Acceptance):** Explicitly approve publishing the personal Gmail address in the public Git history.
+1. **Commit Metadata Audit:** Every commit on `main` uses the verified GitHub noreply address:
+   ```
+   5a2a117 | Ashrafuzzaman Khalid <130174468+asmkhalid111@users.noreply.github.com> | Ashrafuzzaman Khalid <130174468+asmkhalid111@users.noreply.github.com>
+   f69fbe2 | Ashrafuzzaman Khalid <130174468+asmkhalid111@users.noreply.github.com> | Ashrafuzzaman Khalid <130174468+asmkhalid111@users.noreply.github.com>
+   e5f7d79 | Ashrafuzzaman Khalid <130174468+asmkhalid111@users.noreply.github.com> | Ashrafuzzaman Khalid <130174468+asmkhalid111@users.noreply.github.com>
+   7d029fb | Ashrafuzzaman Khalid <130174468+asmkhalid111@users.noreply.github.com> | Ashrafuzzaman Khalid <130174468+asmkhalid111@users.noreply.github.com>
+   ```
+2. **Historical Content Verification:**
+   - Evaluated all historical commits, trees, and diffs for the personal Gmail address.
+   - Result: **0 occurrences** across all commits, files, and diffs.
+3. **Repository Identity:** Repository-local `user.name` and `user.email` are permanently pinned to the verified noreply identity.
 
 ---
 
-## 3. Git History & Pre-Publication Privacy Audit
+## 3. Pre-Publication Security & Secrets Audit
 
-### A. Reachable History & Working Tree Audit
-- **Reachable Commits:** Exactly 3 local commits on `main` (`15320cf`, `c706dcc`, `786092a`).
-- **Secret Scan:** Verified zero private keys, API keys, GitHub personal access tokens, Supabase service keys, or database URLs containing passwords.
-- **PII & Contact Scan:** Verified zero phone numbers, residential street addresses, or private student identification documents.
-- **Asset Hygiene & Sample Asset Removal:** Inspected `public/` directory. Five default sample SVG files generated by `create-next-app` (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`) had zero references in application code (`src/`) and test suites (`tests/`). All 5 unused SVGs were removed from the working tree. Only `src/app/favicon.ico` is retained.
-- **Hardcoded Machine Paths:** Verified zero machine-specific paths (`E:\Codes\Portfolio` or `C:\Users\...`) exist in application source code, configurations, or CI workflows.
+- **Secrets & Keys:** Comprehensive scan across all tracked files confirmed zero API keys, GitHub personal access tokens, Supabase keys, private keys, or database URLs containing credentials.
+- **Personally Identifiable Information (PII):** Verified zero phone numbers, street addresses, or raw academic credentials exist in the source or public assets.
+- **Clean Assets:** Five unused default Next.js sample SVGs (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`) were verified deleted from HEAD; only `src/app/favicon.ico` is tracked.
+- **Gitignore Protection:** Verified that `.gitignore` prevents leaks of `.env*`, `.env*.local`, `supabase/backups/`, `*.dump`, `node_modules/`, `.next/`, `test-results/`, and `playwright-report/`, while tracking migration SQL scripts and explicitly preserving `!.env.example`.
 
 ---
 
-## 4. Installed Packages & Dependency Advisory Findings
+## 4. Local Quality Gate Verification
 
-Verified via `npm list --depth=0` and `npm audit`:
-
-- **Zero Critical or High Vulnerabilities:** Elimination of Vitest 3.x removed the 2 critical `tinypool` prototype pollution vulnerabilities.
-- **Remaining Advisory (7 Moderate):**
-  - Dependency: `minimatch` (7.0.0 - 11.0.0) via `typescript-eslint@8.72.2` bundled in `eslint-config-next@16.4.6`.
-  - Impact Assessment: **Non-Runtime / Build-Time Only**. This advisory affects only the local development linting parser (`eslint .`). It does not bundle into client assets, does not execute during production server rendering, and has zero attack surface in the deployed application.
-  - Action: Retained stable `eslint-config-next@16.4.6` without forcing destructive or incompatible peer-dependency overrides.
-
----
-
-## 5. Verification Commands and Evidence
-
-All five quality gates were executed locally with exit code `0`:
+All quality gates passed locally with exit code `0` immediately prior to remote repository creation:
 
 | Quality Gate | Exact Command | Exit Code | Summary | Duration |
 | :--- | :--- | :---: | :--- | :---: |
-| **Lint** | `npm run lint` | `0` | `eslint .` passed with 0 errors and 0 warnings | 5.0s |
-| **Typecheck** | `npm run typecheck` | `0` | `tsc --noEmit` passed with 0 compilation errors | 3.2s |
-| **Unit Tests** | `npm test` | `0` | `vitest run` (v5.1.0) passed 4/4 assertions | 2.5s |
-| **Production Build** | `npm run build` | `0` | Next.js 16 Turbopack compiled; prerendered static `/` & `/_not-found` | 5.1s |
-| **E2E Smoke Suite** | `npm run test:e2e` | `0` | Playwright passed 12/12 tests across Desktop & Mobile Chromium | 6.2s |
-| **Security Audit** | `npm audit` | `1` | 0 critical, 0 high, 7 moderate (dev-only parser) | 1.8s |
+| **Lint** | `npm run lint` | `0` | `eslint .` passed: 0 errors, 0 warnings | 5.0s |
+| **Typecheck** | `npm run typecheck` | `0` | `tsc --noEmit` passed: 0 compilation errors | 2.6s |
+| **Unit Tests** | `npm test` | `0` | `vitest run` (v5.1.0) passed: 4/4 assertions green | 2.5s |
+| **Production Build** | `npm run build` | `0` | Turbopack static prerender of `/` & `/_not-found` | 5.8s |
+| **E2E Smoke Suite** | `npm run test:e2e` | `0` | Playwright passed 12/12 tests (Desktop & Mobile Chromium) | 8.7s |
+| **Prod Dependency Audit** | `npm audit --omit=dev` | `0` | **0 vulnerabilities** in production runtime packages | 1.8s |
+| **Full Dependency Audit** | `npm audit` | `1` | 0 critical, 0 high, 7 moderate in dev-time linter parser | 1.8s |
 
 ---
 
-## 6. Remote Repository & CI Execution Status
+## 5. Actual Repository Creation & Remote Configuration
 
-- **GitHub CLI Status:** Authenticated as `asmkhalid111` (`gh version 2.98.0`).
-- **Target Repository Name:** `asmkhalid111/portfolio` (public).
-- **Existence Check:** Executed `gh repo view asmkhalid111/portfolio`. Confirmed repository does not exist on GitHub yet.
-- **Remote Push:** **NOT EXECUTED** (Pending explicit Project Owner authorization).
-- **GitHub Actions CI:** **NOT EXECUTED** (Awaiting remote creation and first push).
-- **Repository URL:** None yet (Awaiting Gate B2 authorization).
-
----
-
-## 7. Remaining Risks & Controls
-
-1. **Email Disclosure on Public Push:** Risk that personal Gmail is permanently published to GitHub. Controlled by blocking remote push until the owner makes an explicit decision on author email privacy.
-2. **Transitive Minimatch Advisory:** Controlled; verified to affect only developer linting dependencies without runtime exposure.
-3. **Premature Cloud Provisioning:** Controlled; Vercel and Supabase are strictly locked behind Gate C and M02.
+1. **Existence Pre-Check:** Ran `gh repo view asmkhalid111/portfolio` via GitHub CLI; confirmed repository did not exist on GitHub prior to execution.
+2. **Creation Command:**
+   ```powershell
+   gh repo create asmkhalid111/portfolio --public --source=. --remote=origin
+   ```
+3. **Verified Remote Configuration:**
+   - `fetch`: `https://github.com/asmkhalid111/portfolio.git`
+   - `push`: `https://github.com/asmkhalid111/portfolio.git`
+4. **Verified GitHub Settings:**
+   - Repository Name: `portfolio`
+   - Visibility: `PUBLIC`
+   - Public Web URL: [https://github.com/asmkhalid111/portfolio](https://github.com/asmkhalid111/portfolio)
 
 ---
 
-## 8. Gate C Readiness Assessment
+## 6. Initial Push Execution
 
-- **Local Readiness:** The codebase, tests, build pipeline, and CI configuration are 100% complete, verified, and passing.
-- **Gate C Prerequisite:** Gate C (Vercel deployment) cannot commence until Gate B2 is authorized, the repository is created on GitHub, and the initial push succeeds with a green GitHub Actions CI run.
+- **Command:** `git push -u origin main` (executed without `--force`).
+- **Pushed Commit SHA:** `5a2a117fde783a57a15eb939385ecd45d497a300`
+- **Remote Branch Tracking:** `refs/heads/main` on `origin` points to `5a2a117fde783a57a15eb939385ecd45d497a300`.
+- **Status:** Push succeeded normally with zero errors.
+
+---
+
+## 7. GitHub Actions CI Execution & Blocker Finding
+
+Upon pushing to `main`, GitHub Actions automatically triggered the workflow defined in `.github/workflows/ci.yml`.
+
+### Workflow Run Details
+- **Workflow Name:** `CI Pipeline`
+- **Workflow Run ID:** `43742469140`
+- **Workflow Run URL:** [https://github.com/asmkhalid111/portfolio/actions/runs/43742469140](https://github.com/asmkhalid111/portfolio/actions/runs/43742469140)
+- **Triggered Commit:** `5a2a117fde783a57a15eb939385ecd45d497a300`
+- **Job Name:** `Lint, Typecheck, Test & Build` (Job ID: `132898423320`)
+
+### Failure Diagnostics & Root Cause
+Inspection via `gh run view 43742469140 --repo asmkhalid111/portfolio` revealed:
+
+```
+ANNOTATIONS
+X The job was not started because your account is locked due to a billing issue.
+Lint, Typecheck, Test & Build: .github#1
+```
+
+- **Root Cause:** The failure is an **account-level GitHub Actions platform block** on the owner's GitHub account (`asmkhalid111`), not an application, configuration, or test defect. GitHub Actions refused to start runner execution because the GitHub account is locked due to a billing issue (e.g. an outstanding invoice, expired payment method, or $0 spending limit on Actions minutes).
+- **Application Validation Contrast:** All CI steps (`npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run test:e2e`) pass 100% locally with zero errors.
+
+---
+
+## 8. Resolution Runbook for Project Owner
+
+To unlock GitHub Actions CI runners for the repository:
+
+1. Log in to GitHub and navigate to: [https://github.com/settings/billing](https://github.com/settings/billing)
+2. Review the **Payment information** and **Billing overview** sections.
+3. If an outstanding balance or expired card is shown, update the payment method or settle the balance.
+4. If a spending limit on GitHub Actions is active, check the spending limit setting under **Actions & Packages**.
+5. Once the account lock is cleared, re-run the failed GitHub Actions job directly via:
+   ```powershell
+   gh run rerun 43742469140 --repo asmkhalid111/portfolio
+   ```
+   Or trigger a new run on push.
+
+---
+
+## 9. Gate B2 Completion Status & Next Steps
+
+- **Completed Deliverables:**
+  - Public repository created at [https://github.com/asmkhalid111/portfolio](https://github.com/asmkhalid111/portfolio).
+  - Sanitized `main` branch pushed successfully.
+  - Zero private email occurrences in commit headers or file bodies.
+  - CI workflow configured on Node 26 with browser dependencies.
+- **Current Blocker:** Gate B2 cannot be declared fully accepted until the GitHub account billing lock is resolved by the Project Owner and a green CI run is confirmed.
+- **Gate C Boundary:** Gate C (Vercel deployment) remains **STRICTLY BLOCKED** until Gate B2 CI verification passes.
