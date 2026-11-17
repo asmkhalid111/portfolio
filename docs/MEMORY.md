@@ -1,12 +1,13 @@
 # Project Memory — Durable State & Architecture Context
 
 > **Last Updated:** 2026-11-18
-> **Current State:** **M02 GATE C2A (HOSTED SUPABASE READ-ONLY PREFLIGHT & DRY RUN COMPLETE — PASS WITH CONDITIONS) — BRANCH feat/m02-database — AWAITING CHATGPT REVIEW & GATE C2B AUTHORIZATION**
+> **Current State:** **M02 GATE C2B (CONTROLLED HOSTED SUPABASE MIGRATION COMPLETE & VERIFIED — PASS WITH CONDITIONS) — BRANCH feat/m02-database — AWAITING CHATGPT REVIEW & OUT-OF-BAND ADMIN PROVISIONING AUTHORIZATION**
 > **Active Milestone:** `docs/milestones/M02-database/PLAN.md` (Approved Architecture v0.3)
 > **M01 Completion Report:** `docs/milestones/M01-foundation/COMPLETION.md` (Accepted & Finalized, Tag `m01-complete` at `699cfd0`)
 > **M02 Gate B Report:** `docs/milestones/M02-database/GATE_B_SETUP_REPORT.md` (Completed - Health Check 200 OK Verified)
 > **M02 Gate C1 Report:** `docs/milestones/M02-database/GATE_C1_LOCAL_IMPLEMENTATION_REPORT.md` (Completed - 38/38 Tests Passed)
 > **M02 Gate C2A Report:** `docs/milestones/M02-database/GATE_C2A_HOSTED_PREFLIGHT_REPORT.md` (Completed - PASS WITH CONDITIONS)
+> **M02 Gate C2B Report:** `docs/milestones/M02-database/GATE_C2B_HOSTED_MIGRATION_REPORT.md` (Completed - PASS WITH CONDITIONS)
 > **M02 Plan:** `docs/milestones/M02-database/PLAN.md` (Revised v0.3)
 > **M02 Schema Spec:** `docs/milestones/M02-database/SCHEMA_SPEC.md` (Revised v0.3)
 > **M02 RLS Matrix:** `docs/milestones/M02-database/RLS_MATRIX.md` (Revised v0.3)
@@ -96,13 +97,25 @@
     - Post-dry-run application database integrity verified: `to_regclass('public.projects')` remains `null`.
     - Platform login-role exception disclosed: Supabase cloud control plane provisioned short-lived `cli_login_postgres` (5-minute rolling TTL) to broker token authentication over connection pooling. Formally recorded as a C2A authorization-boundary exception requiring explicit Project Owner acknowledgement before Gate C2B.
     - IPv4 routing: Authenticated CLI queries Management API and routes over IPv4 Supavisor Session pooler (port 5432), completely bypassing IPv6 direct-connection limitations.
-    - Gate C2B (Hosted Database Migration Execution) remains **STRICTLY LOCKED** pending explicit Project Owner authorization and ChatGPT review.
+    - Gate C2B (Hosted Database Migration Execution) transitioned to **AUTHORIZED & EXECUTED**.
+  - Gate C2B (Controlled Hosted Supabase Migration & Security Verification): **COMPLETED & VERIFIED — STATUS: PASS WITH CONDITIONS** (`GATE_C2B_HOSTED_MIGRATION_REPORT.md`).
+    - Manual Owner Execution: Executed interactively in external terminal without `--yes` flag (`npx supabase db push --remote=zvmjdssztebhzpplkcrn --skip-vault`); exit code `0`.
+    - Migration History: All 3 approved migrations (`20261116000001`, `20261116000002`, `20261116000003`) registered remotely; 0 pending.
+    - Schema Verified: `private.admin_users`, `public.projects`, `public.project_media` created with all approved constraints and types.
+    - Foreign Key Integrity: `project_media(project_id) -> projects(id)` with `ON DELETE CASCADE` verified.
+    - Triggers Verified: `trg_projects_published_at` and `trg_projects_updated_at` enabled.
+    - Functions Verified: `private.is_admin()` (`SECURITY DEFINER`, `search_path = ''`, owner `postgres`, execute revoked from public, granted to authenticated).
+    - RLS Verified: Enabled and forced (`relrowsecurity: true`, `relforcerowsecurity: true`) on all three tables. 5 policies on `projects`, 5 on `project_media`, 0 on `admin_users`. Table privileges audited.
+    - Seed Exclusion Verified: Zero seed rows inserted; `count = 0` on all three tables.
+    - PostgREST Data API Verified: Public `GET /rest/v1/projects` returns `[]` (HTTP 200); `GET /rest/v1/project_media` returns `[]` (HTTP 200); `GET /rest/v1/admin_users` returns HTTP 404 (`PGRST205`).
+    - Out-of-band Administrator Provisioning: `private.admin_users` remains empty; initial administrator account deferred to separate authorized dashboard insertion.
 
 ---
 
 ## 4. Next Actions
 
-1. Submit reconciled Gate C2A report (`docs/milestones/M02-database/GATE_C2A_HOSTED_PREFLIGHT_REPORT.md`) for ChatGPT and Project Owner review.
-2. Project Owner to acknowledge the platform-level `cli_login_postgres` authorization-boundary exception.
-3. Await explicit Project Owner authorization for Gate C2B (Hosted Migration Execution).
-4. Gate C2B remains **STRICTLY LOCKED**. Strictly NO hosted migration execution, remote queries, or remote Git pushes.
+1. Submit Gate C2B report (`docs/milestones/M02-database/GATE_C2B_HOSTED_MIGRATION_REPORT.md`) for ChatGPT and Project Owner review.
+2. Project Owner to authorize and perform out-of-band initial administrator insertion into `private.admin_users` via Supabase Dashboard SQL Editor.
+3. Verify administrator authentication and RLS functionality post-insertion.
+4. Prepare for M02 final milestone review and completion.
+5. GitHub remote push and Vercel production deployment remain strictly locked.
