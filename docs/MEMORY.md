@@ -72,13 +72,16 @@
     - Local disposable Supabase stack operational (`127.0.0.1:54321` / `54322`).
     - 3 version-controlled SQL migrations created and validated in `supabase/migrations/`.
     - Local seed fixtures in `supabase/seed.sql` validated.
-    - Idempotency verified via consecutive `npx supabase db reset` executions.
+    - Clean rebuild replay reproducibility verified via consecutive `npx supabase db reset` executions.
     - Generated TypeScript types: `src/lib/supabase/types.ts`.
     - Typed SSR client factories: `src/lib/supabase/client.ts` and `src/lib/supabase/server.ts`.
     - Zero production route imports (`src/app/` decoupled).
     - 38/38 security and constraint tests passed (26 Data API + 12 Kernel SQL).
-    - All local quality gates passed (lint 0/0, typecheck clean, unit tests 4/4, build clean, e2e 12/12, audit clean).
-    - Strictly local execution: Zero remote Supabase modifications, zero remote Git pushes, zero Vercel deployments.
+    - All local quality gates passed (lint 0/0, typecheck clean, unit tests 4/4, build clean, e2e 12/12).
+    - Runtime dependency audit: 0 vulnerabilities (`npm audit --omit=dev`); dev tools: 17 advisories in `minimatch`/`picomatch` (`npm audit`).
+    - PostgREST unexposed schema error code empirically reconciled to `PGRST205` / HTTP 404 for `API-15`, `API-16`, and `API-26`.
+    - Custom WSL2 Docker wrapper audited (`docker.exe` via `CreateProcessA` to `wsl.exe -e docker`), persistence daemon noted (`task-2256`), and credential logging risks documented.
+    - Strictly local execution: Zero remote Supabase modifications (`zvmjdssztebhzpplkcrn` untouched), zero remote Git pushes, zero Vercel deployments.
 
 ---
 

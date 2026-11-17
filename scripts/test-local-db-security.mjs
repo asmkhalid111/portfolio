@@ -265,16 +265,16 @@ async function main() {
 
   // API-15: Non-admin query admin_users
   {
-    const { error, status } = await nonAdminClient.from('admin_users').select('*');
-    const passed = status === 404 || error?.code === 'PGRST204' || error?.code === 'PGRST200';
-    recordTest('API-15', 'Non-admin query admin_users', 'Data API', passed, `HTTP ${status}, schema unexposed: ${error?.message}`);
+    const { data, error, status } = await nonAdminClient.from('admin_users').select('*');
+    const passed = status === 404 && error?.code === 'PGRST205' && data === null;
+    recordTest('API-15', 'Non-admin query admin_users', 'Data API', passed, `HTTP ${status}, code: ${error?.code}, schema unexposed: ${error?.message}`);
   }
 
   // API-16: Anonymous query admin_users
   {
-    const { error, status } = await anonClient.from('admin_users').select('*');
-    const passed = status === 404 || error?.code === 'PGRST204' || error?.code === 'PGRST200';
-    recordTest('API-16', 'Anonymous query admin_users', 'Data API', passed, `HTTP ${status}, schema unexposed: ${error?.message}`);
+    const { data, error, status } = await anonClient.from('admin_users').select('*');
+    const passed = status === 404 && error?.code === 'PGRST205' && data === null;
+    recordTest('API-16', 'Anonymous query admin_users', 'Data API', passed, `HTTP ${status}, code: ${error?.code}, schema unexposed: ${error?.message}`);
   }
 
   // API-17: Admin auth read all projects
@@ -395,12 +395,12 @@ async function main() {
 
   // API-26: Admin API mutation on whitelist
   {
-    const { error, status } = await adminAuthClient.from('admin_users').insert({
+    const { data, error, status } = await adminAuthClient.from('admin_users').insert({
       id: nonAdminUser.id,
       email: nonAdminEmail
     });
-    const passed = status === 404 || error?.code === 'PGRST204' || error?.code === 'PGRST200';
-    recordTest('API-26', 'Admin API mutation on whitelist', 'Data API', passed, `HTTP ${status}, PostgREST unexposed: ${error?.message}`);
+    const passed = status === 404 && error?.code === 'PGRST205' && data === null;
+    recordTest('API-26', 'Admin API mutation on whitelist', 'Data API', passed, `HTTP ${status}, code: ${error?.code}, PostgREST unexposed: ${error?.message}`);
   }
 
   console.log('\n--- Executing Mechanism B: Direct PostgreSQL Kernel Tests (12 Tests) ---\n');
