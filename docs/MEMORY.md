@@ -76,11 +76,14 @@
     - Generated TypeScript types: `src/lib/supabase/types.ts`.
     - Typed SSR client factories: `src/lib/supabase/client.ts` and `src/lib/supabase/server.ts`.
     - Zero production route imports (`src/app/` decoupled).
-    - 38/38 security and constraint tests passed (26 Data API + 12 Kernel SQL).
-    - All local quality gates passed (lint 0/0, typecheck clean, unit tests 4/4, build clean, e2e 12/12).
-    - Runtime dependency audit: 0 vulnerabilities (`npm audit --omit=dev`); dev tools: 17 advisories in `minimatch`/`picomatch` (`npm audit`).
+    - 38/38 primary security and constraint tests passed (26 Data API + 12 Kernel SQL).
+    - 8/8 supplementary trigger state machine tests passed (`TRG-01` to `TRG-08`). Total suite: 46/46 passed.
+    - Test harness hardened: Zero embedded credentials (dynamic loading via ignored `.env.test.local` / CLI `status -o json`), fail-closed loopback guards, cryptographically valid expired JWT (`API-24` asserts `PGRST303`), multi-stage cascade assertions (`API-22`), strict equality checks without false positives (`API-09`), exact 5-character SQLSTATE assertions (`SQL-01` through `SQL-12`).
+    - All local quality gates passed (lint 0/0, typecheck clean, unit tests 4/4, build clean, e2e 12/12, `npm audit --omit=dev` 0 vulnerabilities).
+    - Dev tools: 17 advisories in `minimatch`/`picomatch` (`npm audit`).
     - PostgREST unexposed schema error code empirically reconciled to `PGRST205` / HTTP 404 for `API-15`, `API-16`, and `API-26`.
-    - Custom WSL2 Docker wrapper audited (`docker.exe` via `CreateProcessA` to `wsl.exe -e docker`), persistence daemon noted (`task-2256`), and credential logging risks documented.
+    - Custom WSL2 Docker wrapper audited (`docker.exe` via `CreateProcessA` to `wsl.exe -e docker`), logging routine stripped, `docker_call.log` deleted, keepalive daemon noted (`task-2256`).
+    - Git history audit: Commit `276bea3` documented with local demo key; recommendation to squash/rebase `feat/m02-database` before merge into `main` pending owner authorization.
     - Strictly local execution: Zero remote Supabase modifications (`zvmjdssztebhzpplkcrn` untouched), zero remote Git pushes, zero Vercel deployments.
 
 ---

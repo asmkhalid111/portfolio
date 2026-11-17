@@ -51,7 +51,11 @@ During the source audit, the custom `docker.exe` wrapper was thoroughly examined
    - If the agent restarts or the machine reboots, this daemon terminates. Re-running `wsl.exe -e sleep infinity` or running Docker Desktop natively will be required for subsequent local CLI usage.
 4. **Credential Logging Audit & Remediation**:
    - A debug routine in `docker_wrapper.c` originally wrote command-line arguments to `docker_call.log`. Because the Supabase CLI passes local development dummy secrets (e.g. `POSTGRES_PASSWORD`, default local anon/service keys) on the command line, those local development strings were captured in the log file.
-   - **Remediation**: The logging routine must be disabled or sanitized in production tooling. The log file (`docker_call.log`) should be deleted. For permanent infrastructure, replacing ad-hoc shims with native Docker Desktop for Windows or native WSL2 execution is recommended.
+   - **Remediation Completed**: The logging routine was completely stripped from `docker_wrapper.c`, the binary `docker.exe` was recompiled with GCC, and `docker_call.log` was permanently removed from disk.
+5. **Git History Hygiene Audit**:
+   - An audit of commit history on `feat/m02-database` revealed that commit `276bea3` (`test(db): add 38-test automated local database and RLS security suite`) initially committed the local Supabase demonstration service-role JWT (`eyJhbGci...`) into `scripts/test-local-db-security.mjs`.
+   - **Risk Assessment**: This credential is the standard public demo key hardcoded into official Supabase CLI distributions for local containers (`iss: "supabase-demo"`). It has zero access or authority over any hosted project (`zvmjdssztebhzpplkcrn` uses private hosted keys).
+   - **Recommendation**: To maintain clean repository hygiene prior to merging into `main` and pushing to GitHub, `feat/m02-database` should be squashed or rebased into a single clean commit with the finalized hardened test script (which contains zero embedded keys). History rewriting must proceed only with explicit Project Owner authorization.
 
 ---
 
@@ -189,59 +193,112 @@ Exit Code: 0
 
 ---
 
-## 6. Comprehensive 38-Test Security & Integrity Scorecard
+## 6. Comprehensive Security & Integrity Scorecard
 
-A dedicated test harness (`scripts/test-local-db-security.mjs`, registered as `npm run test:supabase:security`) executed all 38 test specifications from `RLS_MATRIX.md` (v0.3):
+A dedicated hardened test harness (`scripts/test-local-db-security.mjs`, registered as `npm run test:supabase:security`) executed all 38 primary specifications from `RLS_MATRIX.md` (v0.3) plus 8 supplementary trigger invariants:
 
 ```
 ================================================================
-TEST RESULTS SCORECARD: 38/38 PASSED (0 FAILED)
+M02 Gate C1: Hardened Database & RLS Security Suite
+Target: Local Supabase Stack (http://127.0.0.1:54321)
 ================================================================
-🎉 ALL 38 M02 GATE C1 SECURITY & INTEGRITY TESTS PASSED!
+
+PRIMARY MATRIX SCORECARD:        38/38 PASSED (0 FAILED)
+SUPPLEMENTARY TRIGGER SCORECARD: 8/8 PASSED (0 FAILED)
+COMBINED TOTAL:                  46/46 PASSED
+================================================================
+🎉 ALL 38 PRIMARY SCENARIOS + 8 SUPPLEMENTARY TRIGGER INVARIANTS PASSED!
 ```
 
-### Detailed Test Execution Catalog:
+### 6.1 Test Harness Hardening Engineering Summary
+
+Following independent architecture review, the test harness underwent rigorous hardening:
+1. **Zero Hardcoded Credentials & Fail-Closed Guarding**:
+   - Removed all hardcoded keys and URLs from `scripts/test-local-db-security.mjs`.
+   - Credentials load dynamically from Git-ignored `.env.test.local` (checked against `git check-ignore`), falling back to querying running CLI metadata via `npx supabase status -o json`.
+   - **Fail-Closed Policy**: Immediately throws and aborts if:
+     - Any URL or key contains the hosted project reference (`zvmjdssztebhzpplkcrn`).
+     - Target URL contains `.supabase.co` or any host other than `127.0.0.1` or `localhost`.
+     - Required keys (`PUBLISHABLE_KEY`, `SERVICE_ROLE_KEY`, `JWT_SECRET`) are missing.
+     - Any attempt is made to read the hosted `.env.local`.
+2. **Cryptographically Valid Expired JWT Test (`API-24`)**:
+   - Replaced static malformed token with a dynamically generated HS256 JWT correctly signed with the local `JWT_SECRET`.
+   - PostgREST cryptographic verification succeeds on the signature, then validates expiration against claims (`iat`, `exp`), explicitly throwing `HTTP 401`, code `PGRST303`, and message `JWT expired`. This unambiguously verifies expiration enforcement rather than signature rejection (`PGRST301`).
+3. **Multi-Stage Cascading Deletion Verification (`API-22`)**:
+   - Creates a dedicated parent project and attached media record.
+   - Verifies both records exist in PostgreSQL via privileged queries.
+   - Deletes parent project as authenticated administrator.
+   - Verifies parent project deletion and independently confirms attached media record was purged via foreign key `ON DELETE CASCADE`.
+4. **Lifecycle Verification for Client Timestamp Overrides (`SQL-12`)**:
+   - Inserts unique draft fixture with client-provided non-NULL `published_at`.
+   - Confirms insert succeeds with returning payload.
+   - Explicitly asserts `(published_at IS NULL) AS is_null` returns `t`.
+   - Performs deterministic deletion and verifies 0 remaining records.
+5. **Strict Negative Mutation Assertions (`API-03`, `04`, `05`, `08`, `09`, `12`, `13`, `14`, `23`)**:
+   - Queries baseline record before mutation.
+   - Executes unauthorized mutation via client.
+   - Re-queries record after mutation, failing if verification query fails.
+   - Performs explicit equality comparison against baseline (e.g. `API-09` asserts `afterData.alt_text === beforeData.alt_text`, eliminating loose inequality false positives).
+   - Verifies 0 rows affected for RLS silent drops (`API-13`, `API-14`).
+6. **Kernel SQL Assertions with Exact SQLSTATE Extraction (`SQL-01` through `SQL-12`)**:
+   - Invokes `psql` via structured process arguments (`execFileSync`) with `-v VERBOSITY=verbose`, extracting exact 5-character PostgreSQL error codes (`42501`, `23505`, `23514`, `23503`).
+   - Asserts specific constraint names (`uq_projects_slug`, `chk_projects_slug_format`, `chk_projects_status`, `chk_projects_title_length`, `chk_projects_summary_length`, `project_media_project_id_fkey`, `chk_admin_users_email_valid`).
+
+### 6.2 Detailed Test Execution Catalog (Primary 38 Scenarios):
 
 | ID | Category | Scenario / Invariant | Result | Evidence / Observed State |
 |:---|:---:|:---|:---:|:---|
-| **API-01** | Data API | Anonymous public projects read | **PASS** | HTTP 200; returns 1 published project; zero drafts. |
+| **API-01** | Data API | Anonymous public projects read | **PASS** | HTTP 200; 1 published project returned; 0 drafts exposed. |
 | **API-02** | Data API | Anonymous draft project read | **PASS** | HTTP 200; returns empty array `[]` (drives Next.js 404). |
-| **API-03** | Data API | Anonymous direct project insert | **PASS** | HTTP 401; DB query confirms project NOT created. |
-| **API-04** | Data API | Anonymous direct project update | **PASS** | HTTP 401; DB query confirms original title unchanged. |
-| **API-05** | Data API | Anonymous direct project delete | **PASS** | HTTP 401; DB query confirms project remains in DB. |
+| **API-03** | Data API | Anonymous direct project insert | **PASS** | Rejected HTTP 401; DB query confirms project NOT created. |
+| **API-04** | Data API | Anonymous direct project update | **PASS** | Status 401; baseline title & updated_at unchanged. |
+| **API-05** | Data API | Anonymous direct project delete | **PASS** | Status 401; baseline project preserved in DB. |
 | **API-06** | Data API | Anonymous published media read | **PASS** | HTTP 200; published media record retrieved. |
 | **API-07** | Data API | Anonymous draft media read | **PASS** | HTTP 200; draft media record hidden (`0` rows). |
-| **API-08** | Data API | Anonymous media insert attempt | **PASS** | HTTP 401; DB query confirms media NOT created. |
-| **API-09** | Data API | Anonymous media update attempt | **PASS** | HTTP 401; DB query confirms original alt text unchanged. |
+| **API-08** | Data API | Anonymous media insert attempt | **PASS** | Status 401; DB query confirms media NOT created. |
+| **API-09** | Data API | Anonymous media update attempt | **PASS** | Status 401; alt_text strictly equal to baseline (`unchanged = true`). |
 | **API-10** | Data API | Non-admin auth read published | **PASS** | HTTP 200; returns published projects only. |
 | **API-11** | Data API | Non-admin auth read draft | **PASS** | HTTP 200; draft project isolated (`0` rows). |
 | **API-12** | Data API | Non-admin auth project insert | **PASS** | HTTP 403 (SQLSTATE 42501); project NOT created in DB. |
-| **API-13** | Data API | Non-admin auth project update | **PASS** | HTTP 204 (0 rows modified); original title unchanged. |
-| **API-14** | Data API | Non-admin auth project delete | **PASS** | HTTP 204 (0 rows modified); project remains in DB. |
-| **API-15** | Data API | Non-admin query admin_users | **PASS** | HTTP 404; PostgREST unexposed schema error (`PGRST205`: Could not find table 'public.admin_users' in schema cache). |
-| **API-16** | Data API | Anonymous query admin_users | **PASS** | HTTP 404; PostgREST unexposed schema error (`PGRST205`: Could not find table 'public.admin_users' in schema cache). |
+| **API-13** | Data API | Non-admin auth project update | **PASS** | HTTP 200 (0 rows affected); title & updated_at strictly unchanged. |
+| **API-14** | Data API | Non-admin auth project delete | **PASS** | HTTP 200 (0 rows affected); project preserved in DB. |
+| **API-15** | Data API | Non-admin query admin_users | **PASS** | HTTP 404; PostgREST unexposed schema cache error (`PGRST205`). |
+| **API-16** | Data API | Anonymous query admin_users | **PASS** | HTTP 404; PostgREST unexposed schema cache error (`PGRST205`). |
 | **API-17** | Data API | Admin auth read all projects | **PASS** | HTTP 200; both published AND draft projects returned. |
 | **API-18** | Data API | Admin auth insert draft project | **PASS** | HTTP 201; status=`draft`; `published_at` is `null`. |
 | **API-19** | Data API | Admin auth insert published project | **PASS** | HTTP 201; status=`published`; `published_at` populated by trigger. |
 | **API-20** | Data API | Admin auth publish draft | **PASS** | HTTP 200; status updated; `published_at` populated by trigger. |
 | **API-21** | Data API | Admin auth revert to draft | **PASS** | HTTP 200; status=`draft`; `published_at` reset to `null`; drops from anon view. |
-| **API-22** | Data API | Admin auth delete project | **PASS** | HTTP 204; project deleted; linked media cascaded and deleted. |
-| **API-23** | Data API | Forged user metadata bypass | **PASS** | HTTP 403 (SQLSTATE 42501); user with JWT `role: admin` rejected by `is_admin()`. |
-| **API-24** | Data API | Expired JWT authentication | **PASS** | HTTP 401 Unauthorized; PostgREST rejects expired token. |
-| **API-25** | Data API | Malformed JWT authentication | **PASS** | HTTP 401 Unauthorized; PostgREST rejects invalid signature. |
-| **API-26** | Data API | Admin API mutation on whitelist | **PASS** | HTTP 404; PostgREST unexposed schema error (`PGRST205`); admin cannot mutate whitelist via API. |
+| **API-22** | Data API | Admin auth delete project (cascade) | **PASS** | HTTP 204; parent deleted; linked media confirmed cascaded and removed. |
+| **API-23** | Data API | Forged user metadata bypass | **PASS** | HTTP 403 (SQLSTATE 42501); JWT `role: admin` rejected by `is_admin()`. |
+| **API-24** | Data API | Expired JWT authentication | **PASS** | HTTP 401; code `PGRST303`, message `JWT expired` (valid signature, verified expiration). |
+| **API-25** | Data API | Malformed JWT authentication | **PASS** | HTTP 401 Unauthorized; code `PGRST301` (cryptographic parsing failure). |
+| **API-26** | Data API | Admin API mutation on whitelist | **PASS** | HTTP 404; PostgREST unexposed schema cache error (`PGRST205`). |
 | **SQL-01** | Kernel SQL | Anonymous schema usage on private | **PASS** | SQLSTATE `42501`: Permission denied for schema `private`. |
-| **SQL-02** | Kernel SQL | Authenticated schema usage on private | **PASS** | Success: Schema USAGE permitted; evaluates function safely. |
+| **SQL-02** | Kernel SQL | Authenticated schema usage on private | **PASS** | SQLSTATE `null`: Schema USAGE permitted; evaluates function safely. |
 | **SQL-03** | Kernel SQL | Direct SQL query on admin_users | **PASS** | SQLSTATE `42501`: Permission denied for table `admin_users`. |
 | **SQL-04** | Kernel SQL | Direct SQL mutation on admin_users | **PASS** | SQLSTATE `42501`: Permission denied for table `admin_users`. |
-| **SQL-05** | Kernel SQL | Duplicate project slug constraint | **PASS** | SQLSTATE `23505`: Duplicate key violates `uq_projects_slug`. |
-| **SQL-06** | Kernel SQL | Invalid slug format constraint | **PASS** | SQLSTATE `23514`: Check constraint `chk_projects_slug_format` violated. |
-| **SQL-07** | Kernel SQL | Invalid project status constraint | **PASS** | SQLSTATE `23514`: Check constraint `chk_projects_status` violated. |
-| **SQL-08** | Kernel SQL | Title length constraint (<2 chars) | **PASS** | SQLSTATE `23514`: Check constraint `chk_projects_title_length` violated. |
-| **SQL-09** | Kernel SQL | Summary length constraint (<10 chars) | **PASS** | SQLSTATE `23514`: Check constraint `chk_projects_summary_length` violated. |
-| **SQL-10** | Kernel SQL | Foreign key cascade integrity | **PASS** | SQLSTATE `23503`: Violates `project_media_project_id_fkey`. |
-| **SQL-11** | Kernel SQL | Admin email format constraint | **PASS** | SQLSTATE `23514`: Check constraint `chk_admin_users_email_valid` violated. |
-| **SQL-12** | Kernel SQL | Client timestamp tampering override | **PASS** | Trigger Execution: Client-supplied `published_at` on draft forced to `NULL` (verified via `is_null = t`). |
+| **SQL-05** | Kernel SQL | Duplicate project slug constraint | **PASS** | SQLSTATE `23505`: Violated unique constraint `uq_projects_slug`. |
+| **SQL-06** | Kernel SQL | Invalid slug format constraint | **PASS** | SQLSTATE `23514`: Violated check constraint `chk_projects_slug_format`. |
+| **SQL-07** | Kernel SQL | Invalid project status constraint | **PASS** | SQLSTATE `23514`: Violated check constraint `chk_projects_status`. |
+| **SQL-08** | Kernel SQL | Title length constraint (<2 chars) | **PASS** | SQLSTATE `23514`: Violated check constraint `chk_projects_title_length`. |
+| **SQL-09** | Kernel SQL | Summary length constraint (<10 chars) | **PASS** | SQLSTATE `23514`: Violated check constraint `chk_projects_summary_length`. |
+| **SQL-10** | Kernel SQL | Foreign key cascade integrity | **PASS** | SQLSTATE `23503`: Violated foreign key `project_media_project_id_fkey`. |
+| **SQL-11** | Kernel SQL | Admin email format constraint | **PASS** | SQLSTATE `23514`: Violated check constraint `chk_admin_users_email_valid`. |
+| **SQL-12** | Kernel SQL | Client timestamp tampering override | **PASS** | Lifecycle verified: Draft `published_at` overridden to `NULL` (`is_null = t`, clean = true). |
+
+### 6.3 Supplementary Trigger State Machine Invariants (8 Tests):
+
+| ID | Focus Area | Invariant Tested | Result | Verification Evidence |
+|:---|:---:|:---|:---:|:---|
+| **TRG-01** | Timestamp Sync | Published project INSERT creates server timestamp | **PASS** | Server assigns `clock_timestamp()` automatically (`has_ts = true`). |
+| **TRG-02** | Anti-Tampering | Client-provided published_at on INSERT is overridden | **PASS** | Client-supplied 2019 date replaced with current server timestamp. |
+| **TRG-03** | Immutability | Published-to-published UPDATE preserves timestamp | **PASS** | Updating title preserves existing publication timestamp exactly. |
+| **TRG-04** | Anti-Tampering | Timestamp tampering on published UPDATE is overwritten | **PASS** | Client attempt to alter published_at is overridden with `OLD.published_at`. |
+| **TRG-05** | State Transition | Published-to-draft transition clears timestamp | **PASS** | Transitioning status to `draft` forcibly wipes `published_at` to `NULL`. |
+| **TRG-06** | Draft Preservation | Draft-to-draft UPDATE keeps timestamp NULL | **PASS** | Updating fields on draft retains `published_at = NULL`. |
+| **TRG-07** | State Transition | Draft-to-published transition assigns timestamp | **PASS** | Transitioning status to `published` assigns fresh `clock_timestamp()`. |
+| **TRG-08** | Audit Trail | updated_at advances after an actual update | **PASS** | After record update, `new_updated_at > old_updated_at` evaluates true. |
 
 ### 6.1 PostgREST Error Code Reconciliation (PGRST205 vs. PGRST204)
 During the source audit, the exact error responses returned by PostgREST v12+ for unexposed schemas were empirically reconciled:
@@ -264,7 +321,7 @@ During the source audit, the exact error responses returned by PostgREST v12+ fo
 | **E2E Tests** | `npm run test:e2e` | `0` | 12/12 Playwright tests passed across Desktop & Mobile viewports. | **PASSED** |
 | **Runtime Security Audit** | `npm audit --omit=dev` | `0` | `found 0 vulnerabilities` in production runtime dependencies. | **PASSED** |
 | **Dev Dependency Audit** | `npm audit` | `1` | 17 vulnerabilities in dev dependencies (6 moderate, 11 high). Transitive to `minimatch` (`GHSA-g3hv-75wg-m249`) and `picomatch` (`GHSA-fc5q-39xc-vjpf`) under `eslint-config-next` and `vitest`. Verified 0 production exposure. | **ACKNOWLEDGED** |
-| **Database Security Suite** | `npm run test:supabase:security` | `0` | 38/38 tests passed (26 Data API + 12 Kernel SQL). | **PASSED** |
+| **Database Security Suite** | `npm run test:supabase:security` | `0` | 46/46 tests passed (38 primary scenarios + 8 supplementary trigger invariants). Zero skipped. | **PASSED** |
 
 ### 7.1 npm Dependency Audit Analysis
 - **Production Vulnerabilities**: `npm audit --omit=dev` confirms **0 vulnerabilities** across all runtime dependencies (`next`, `react`, `react-dom`, `@supabase/supabase-js`, `@supabase/ssr`).
@@ -281,8 +338,8 @@ During the source audit, the exact error responses returned by PostgREST v12+ fo
 ```
 modified:
   package.json (added "test:supabase:security" script)
-  scripts/test-local-db-security.mjs (tightened PGRST205 assertions and polling loop)
-  docs/milestones/M02-database/GATE_C1_LOCAL_IMPLEMENTATION_REPORT.md (reconciled report)
+  scripts/test-local-db-security.mjs (hardened test harness: zero embedded credentials, signed expired JWT, cascade assertions, exact SQLSTATEs, 8 trigger invariants)
+  docs/milestones/M02-database/GATE_C1_LOCAL_IMPLEMENTATION_REPORT.md (reconciled and hardened report)
   docs/MEMORY.md (durable state update)
 
 untracked / newly created in M02 Gate C1:
@@ -293,21 +350,22 @@ untracked / newly created in M02 Gate C1:
   supabase/migrations/20261116000002_create_projects.sql
   supabase/migrations/20261116000003_create_project_media.sql
   supabase/seed.sql (deterministic sample fixtures for local dev)
+
+local-only git-ignored:
+  .env.test.local (local-only test credentials, verified ignored by git)
 ```
 
 ---
 
-## 9. Source Audit Reconciliation Verdict & Next Steps
+## 9. Source Audit & Hardening Verdict & Next Steps
 
-### Source Audit Verdict: **PASS WITH CONDITIONS**
-- **Migration & Security Architecture**: Fully conforms to approved specifications `SCHEMA_SPEC.md` (v0.3) and `RLS_MATRIX.md` (v0.3).
-- **Security Validation**: 38/38 local tests pass deterministically against the local stack. PostgREST error codes reconciled to `PGRST205` / HTTP 404.
+### Hardening Verdict: **PASS — READY FOR CHATGPT AUDIT**
+- **Zero Embedded Credentials**: `scripts/test-local-db-security.mjs` contains no API keys or service-role tokens; fails closed on missing keys, non-loopback URLs, `.supabase.co`, or hosted project references.
+- **Cryptographic Verification**: `API-24` cryptographically validates signature and explicitly tests `PGRST303` expired token rejection.
+- **Robust Invariant Enforcement**: All 38 primary specifications pass with strict equality and zero false positives; all 8 supplementary trigger invariants pass.
 - **Runtime Safety**: Zero production route dependencies, 0 production npm vulnerabilities.
-- **Conditions**:
-  1. WSL2 Docker wrapper requires background keepalive daemon (`task-2256`) during local CLI execution until Docker Desktop or native Linux runner is active.
-  2. Temporary `docker_call.log` must be cleaned up / excluded from source control.
-  3. Gate C2 (Cloud PostgreSQL Migration to `zvmjdssztebhzpplkcrn`) requires explicit Project Owner authorization before any remote connection is established.
+- **Git History Hygiene**: Commit `276bea3` introduced the local demo service-role token (`eyJhbGciOi...`). Documented for owner approval to squash/rebase `feat/m02-database` before merge into `main`.
 
 ### Next Steps:
 1. Stage and commit all audited files locally on `feat/m02-database` (NO push to remote).
-2. Maintain local-only state; await ChatGPT authorization decision and Project Owner sign-off for Gate C2.
+2. Maintain local-only state; await ChatGPT review and Project Owner authorization before Gate C2.
