@@ -83,20 +83,21 @@ A deterministic, non-mutating connectivity test script was authored at `scripts/
 
 ---
 
-## 6. Local Quality Verification Matrix
+## 6. Local Quality Verification & Clean-Install Matrix
 
-All local tests and builds were executed to confirm zero regressions from package installation:
+All local tests, clean dependency resolution, and production builds were executed to confirm 100% reproducibility and zero regressions:
 
 | Verification Target | Command Executed | Exit Code | Outcome & Test Counts |
 |:---|:---|:---:|:---|
+| **Clean Lockfile Install** | `npm ci` | `0` | Installed 459 packages from lockfile in 49s (0 discrepancies) |
 | **Static Code Linting** | `npm run lint` | `0` | ESLint passed with 0 errors, 0 warnings |
 | **TypeScript Typecheck** | `npm run typecheck` | `0` | TypeScript strict mode passed with 0 type errors |
-| **Unit & Component Tests** | `npm test` | `0` | 4 passed out of 4 tests in Vitest v5.1.0 (133ms) |
-| **Next.js Production Build** | `npm run build` | `0` | Next.js 16.4.6 static prerendering succeeded (`/`, `/_not-found`) |
-| **Browser E2E Automation** | `npm run test:e2e` | `0` | 12 passed out of 12 tests in Playwright (Desktop & Mobile) |
+| **Unit & Component Tests** | `npm test` | `0` | 4 passed out of 4 tests in Vitest v5.1.0 (130ms) |
+| **Next.js Production Build** | `npm run build` | `0` | Next.js 16.4.6 static prerendering succeeded (`/`, `/_not-found`) in 1.6s |
+| **Browser E2E Automation** | `npm run test:e2e` | `0` | 12 passed out of 12 tests in Playwright (Desktop & Mobile Chromium) in 5.6s |
 | **Production Runtime Audit** | `npm audit --omit=dev` | `0` | 0 vulnerabilities found in production runtime packages |
 | **Full Dependency Audit** | `npm audit` | `1` | 7 moderate vulnerabilities in dev-only transitive `@typescript-eslint` `minimatch` (pre-existing accepted advisory) |
-| **Read-Only Connectivity Test** | `npm run test:supabase:connection` | `1` | Correctly halted: `.env.local` not yet created by owner |
+| **Read-Only Connectivity Test** | `npm run test:supabase:connection` | `1` | Failed closed: `node: .env.local: not found` (file not yet present on disk) |
 
 ---
 
@@ -113,23 +114,19 @@ The approved architectural decisions from Gate A v0.3 are preserved in their ent
 
 ## 8. Owner Actions Required to Complete Gate B
 
-The Project Owner must perform the following two steps in their browser and local editor:
+The Project Owner has indicated that project creation was completed on Supabase. However, an automated filesystem inspection confirms that the file `E:\Codes\Portfolio\.env.local` does not yet exist on disk in the project root:
 
-### Step 1: Provision Free-Tier Project on Supabase
-1. Navigate to **https://supabase.com/dashboard** and sign in.
-2. Select an organization on the **Free plan** ($0/mo).
-3. Click **New project**.
-4. Configure project:
-   - **Name**: `portfolio`
-   - **Region**: Nearest available (e.g. `Singapore` / `Southeast Asia`).
-   - **Database Password**: Generate a strong password and save it in a password manager.
-5. Confirm creation and wait until the dashboard reports that project services are ready.
+- `Test-Path .env.local`: Evaluated to `False`.
+- `git status --ignored`: Reports no `.env.local` file present.
+- `npm run test:supabase:connection`: Exits with `node: .env.local: not found`.
 
-### Step 2: Create Untracked Local `.env.local`
+### Resolution Steps for Project Owner:
 1. Open the project settings in the Supabase Dashboard: **Project Settings > API Keys**.
-2. Locate the **Project URL** and the modern **Publishable Key** (`sb_publishable_...`).
-3. In your local editor, create the file `E:\Codes\Portfolio\.env.local` (untracked, ignored by Git).
-4. Add the following lines using your actual dashboard values:
+2. Locate the **Project URL** (`https://<ref>.supabase.co`) and modern **Publishable Key** (`sb_publishable_...`).
+3. In your local editor or IDE, create a new file located exactly at:
+   `E:\Codes\Portfolio\.env.local`
+   *(Ensure it is in the repository root directory `E:\Codes\Portfolio`, not inside `src/` or `supabase/`, and without a trailing `.txt` extension)*.
+4. Add the following lines:
    ```bash
    NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
@@ -137,14 +134,15 @@ The Project Owner must perform the following two steps in their browser and loca
 5. Save the file.
 6. *(Do NOT paste these values into chat or commit them to Git)*.
 
-Once `.env.local` is saved, notify Antigravity to run `npm run test:supabase:connection` to complete Gate B.
+Once `.env.local` is saved to disk, notify Antigravity to run `npm run test:supabase:connection` to complete Gate B.
 
 ---
 
 ## 9. Gate B Assessment
 
+- **Clean-Install Verification (`npm ci`)**: **COMPLETE** (exit code 0, 459 packages installed cleanly from lockfile).
 - **Local Tooling & Dependencies**: **COMPLETE** (packages installed, CLI initialized, test harness ready).
 - **Environment Safety**: **COMPLETE** (`.env.local` ignored, `.env.example` created).
 - **Local Quality Verification**: **COMPLETE** (lint, typecheck, Vitest, build, Playwright all green).
-- **Remote Connectivity Verification**: **PENDING OWNER DASHBOARD CREATION & `.env.local` POPULATION**.
-- **Overall Assessment**: **PARTIAL — Ready for Owner Action**.
+- **Remote Connectivity Verification**: **BLOCKED BY MISSING LOCAL `.env.local` FILE**.
+- **Overall Assessment**: **PARTIAL — Awaiting `.env.local` file creation on disk**.
