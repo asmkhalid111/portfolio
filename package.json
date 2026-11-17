@@ -15,7 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:supabase:connection": "node --env-file=.env.local scripts/check-supabase-connection.mjs"
+    "test:supabase:connection": "node --env-file=.env.local scripts/check-supabase-connection.mjs",
+    "test:supabase:security": "node scripts/test-local-db-security.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
