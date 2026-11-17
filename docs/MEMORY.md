@@ -1,18 +1,19 @@
 # Project Memory — Durable State & Architecture Context
 
 > **Last Updated:** 2026-11-18
-> **Current State:** **M02 COMPLETE WITH CONDITIONS (DATABASE INFRASTRUCTURE ACCEPTED — ADMIN BOOTSTRAP DEFERRED TO M03) — BRANCH feat/m02-database — AWAITING CHATGPT FINAL MILESTONE REVIEW**
-> **Active Milestone:** `docs/milestones/M02-database/PLAN.md` (Approved Architecture v0.3)
+> **Current State:** **M03 GATE A (LOCAL-ONLY AUTHENTICATION ARCHITECTURE & SECURITY DESIGN COMPLETE — PASS WITH CONDITIONS) — BRANCH feat/m02-database — AWAITING INDEPENDENT CHATGPT & OWNER GATE A REVIEW**
+> **Active Milestone:** `docs/milestones/M03-authentication/PLAN.md` (Gate A v1.0 Specification)
 > **M01 Completion Report:** `docs/milestones/M01-foundation/COMPLETION.md` (Accepted & Finalized, Tag `m01-complete` at `699cfd0`)
 > **M02 Completion Report:** `docs/milestones/M02-database/COMPLETION.md` (Pass with Conditions — Infrastructure Accepted, Admin Bootstrap Deferred)
 > **M02 Gate B Report:** `docs/milestones/M02-database/GATE_B_SETUP_REPORT.md` (Completed - Health Check 200 OK Verified)
 > **M02 Gate C1 Report:** `docs/milestones/M02-database/GATE_C1_LOCAL_IMPLEMENTATION_REPORT.md` (Completed - 38/38 Tests Passed)
 > **M02 Gate C2A Report:** `docs/milestones/M02-database/GATE_C2A_HOSTED_PREFLIGHT_REPORT.md` (Completed - PASS WITH CONDITIONS)
 > **M02 Gate C2B Report:** `docs/milestones/M02-database/GATE_C2B_HOSTED_MIGRATION_REPORT.md` (Completed - PASS WITH CONDITIONS)
-> **M03 Readiness Plan:** `docs/milestones/M02-database/M03_READINESS_PLAN.md` (Planned Architecture & Security Criteria)
-> **M02 Plan:** `docs/milestones/M02-database/PLAN.md` (Revised v0.3)
-> **M02 Schema Spec:** `docs/milestones/M02-database/SCHEMA_SPEC.md` (Revised v0.3)
-> **M02 RLS Matrix:** `docs/milestones/M02-database/RLS_MATRIX.md` (Revised v0.3)
+> **M03 Plan:** `docs/milestones/M03-authentication/PLAN.md` (v1.0 Gate A Specification)
+> **M03 Architecture:** `docs/milestones/M03-authentication/ARCHITECTURE.md` (Edge Proxy, RPC & Callback Design)
+> **M03 Threat Model:** `docs/milestones/M03-authentication/THREAT_MODEL.md` (20 Threat Scenarios across 6 Boundaries)
+> **M03 Requirements Matrix:** `docs/milestones/M03-authentication/REQUIREMENTS_MATRIX.md` (25 Security Tests & 12 ADRs)
+> **M03 Gate A Review:** `docs/milestones/M03-authentication/GATE_A_REVIEW.md` (Completed - PASS WITH CONDITIONS)
 
 ---
 
@@ -111,15 +112,28 @@
     - Seed Exclusion Verified: Zero seed rows inserted; `count = 0` on all three tables.
     - PostgREST Data API Verified: Public `GET /rest/v1/projects` returns `[]` (HTTP 200); `GET /rest/v1/project_media` returns `[]` (HTTP 200); `GET /rest/v1/admin_users` returns HTTP 404 (`PGRST205`).
     - Out-of-band Administrator Provisioning Deferral: Following pre-bootstrap analysis, Project Owner explicitly rejected the "Auto Confirm" workaround. Initial administrator identity creation and whitelist insertion into `private.admin_users` is formally **DEFERRED to Milestone M03** to preserve strict email verification without shortcuts.
-    - M03 Readiness Plan: Created [`docs/milestones/M02-database/M03_READINESS_PLAN.md`](docs/milestones/M02-database/M03_READINESS_PLAN.md) defining the architecture for `/auth/callback`, `/admin/login`, SSR session verification, invitation completion, edge guards, and subsequent guarded SQL insertion.
+    - M03 Readiness Plan: Created [`docs/milestones/M02-database/M03_READINESS_PLAN.md`](docs/milestones/M02-database/M03_READINESS_PLAN.md) defining preliminary architecture.
     - Milestone M02 Completion Status: All database infrastructure deliverables complete and verified; ADR-009 12-point protocol passed (clean git, deterministic install, lint 0/0, tsc clean, vitest 4/4, build clean, npm audit 0 runtime vulns, 46/46 security tests green locally, zero seed leaks in production). Completion report created: [`docs/milestones/M02-database/COMPLETION.md`](docs/milestones/M02-database/COMPLETION.md). Status: **PASS WITH CONDITIONS (AWAITING CHATGPT COMPLETION REVIEW)**.
+  - **M03 (Administrator Identity & Auth Boundaries):**
+    - Gate A (Local-Only Architecture and Security Design): **COMPLETED & DOCUMENTED — STATUS: PASS WITH CONDITIONS** ([`docs/milestones/M03-authentication/GATE_A_REVIEW.md`](docs/milestones/M03-authentication/GATE_A_REVIEW.md)).
+    - M02 database foundation accepted; administrator bootstrap formally deferred to M03.
+    - Gate A architecture work authorized: local-only, documentation-only.
+    - Four architectural corrections resolved:
+      1. Next.js 16 `src/proxy.ts` edge session refresh and cookie propagation specified (proxy explicitly not sole authorization boundary).
+      2. Private administrator authorization resolved via parameterless `public.is_admin()` `SECURITY INVOKER` RPC wrapper (avoids exposing `private` schema or service-role keys).
+      3. Dual-flow auth callback supporting both PKCE `code` and email `token_hash` with open-redirect guards.
+      4. Onboarding deadlock prevented by decoupling `/auth/setup-password` and `/auth/pending-approval` outside `/admin/**`.
+    - Threat model analyzed 20 threat scenarios across 6 trust boundaries ([`THREAT_MODEL.md`](docs/milestones/M03-authentication/THREAT_MODEL.md)).
+    - 25 automated security tests specified (`AUTH-01` to `AUTH-25`) using local disposable GoTrue stack ([`REQUIREMENTS_MATRIX.md`](docs/milestones/M03-authentication/REQUIREMENTS_MATRIX.md)).
+    - 12 architectural decisions (DEC-01 to DEC-12) documented.
+    - Zero application code written, zero packages installed, zero SQL migrations executed, zero production configuration altered.
+    - Gate A awaiting independent ChatGPT and Project Owner review.
 
 ---
 
 ## 4. Next Actions
 
-1. Submit Milestone M02 Completion Report (`docs/milestones/M02-database/COMPLETION.md`) and M03 Readiness Plan (`docs/milestones/M02-database/M03_READINESS_PLAN.md`) for independent ChatGPT and Project Owner completion audit.
-2. Await explicit Project Owner authorization to commence Milestone M03 (Administrator Identity & Auth Boundaries).
-3. In M03, implement `/auth/callback`, `/admin/login`, SSR session management, and the genuine email-verified invitation onboarding flow.
-4. Execute the guarded `private.admin_users` insertion only after the administrator identity is verified through the M03 flow.
-5. GitHub remote push and Vercel production deployment remain strictly locked.
+1. Submit Milestone M03 Gate A documentation artifacts (`PLAN.md`, `ARCHITECTURE.md`, `THREAT_MODEL.md`, `REQUIREMENTS_MATRIX.md`, `GATE_A_REVIEW.md`) for independent ChatGPT and Project Owner architecture audit.
+2. Await explicit Project Owner authorization for M03 Gate B (Local Database Authorization Migration & Proxy implementation).
+3. Transition branch to `feat/m03-auth` upon Gate B authorization.
+4. Strictly NO unapproved code implementation, production Supabase operations, GitHub remote pushes, or Vercel deployments.
