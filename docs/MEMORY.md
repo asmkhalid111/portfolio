@@ -1,13 +1,15 @@
 # Project Memory — Durable State & Architecture Context
 
 > **Last Updated:** 2026-11-18
-> **Current State:** **M02 GATE C2B (CONTROLLED HOSTED SUPABASE MIGRATION COMPLETE & VERIFIED — PASS WITH CONDITIONS) — BRANCH feat/m02-database — AWAITING CHATGPT REVIEW & OUT-OF-BAND ADMIN PROVISIONING AUTHORIZATION**
+> **Current State:** **M02 COMPLETE WITH CONDITIONS (DATABASE INFRASTRUCTURE ACCEPTED — ADMIN BOOTSTRAP DEFERRED TO M03) — BRANCH feat/m02-database — AWAITING CHATGPT FINAL MILESTONE REVIEW**
 > **Active Milestone:** `docs/milestones/M02-database/PLAN.md` (Approved Architecture v0.3)
 > **M01 Completion Report:** `docs/milestones/M01-foundation/COMPLETION.md` (Accepted & Finalized, Tag `m01-complete` at `699cfd0`)
+> **M02 Completion Report:** `docs/milestones/M02-database/COMPLETION.md` (Pass with Conditions — Infrastructure Accepted, Admin Bootstrap Deferred)
 > **M02 Gate B Report:** `docs/milestones/M02-database/GATE_B_SETUP_REPORT.md` (Completed - Health Check 200 OK Verified)
 > **M02 Gate C1 Report:** `docs/milestones/M02-database/GATE_C1_LOCAL_IMPLEMENTATION_REPORT.md` (Completed - 38/38 Tests Passed)
 > **M02 Gate C2A Report:** `docs/milestones/M02-database/GATE_C2A_HOSTED_PREFLIGHT_REPORT.md` (Completed - PASS WITH CONDITIONS)
 > **M02 Gate C2B Report:** `docs/milestones/M02-database/GATE_C2B_HOSTED_MIGRATION_REPORT.md` (Completed - PASS WITH CONDITIONS)
+> **M03 Readiness Plan:** `docs/milestones/M02-database/M03_READINESS_PLAN.md` (Planned Architecture & Security Criteria)
 > **M02 Plan:** `docs/milestones/M02-database/PLAN.md` (Revised v0.3)
 > **M02 Schema Spec:** `docs/milestones/M02-database/SCHEMA_SPEC.md` (Revised v0.3)
 > **M02 RLS Matrix:** `docs/milestones/M02-database/RLS_MATRIX.md` (Revised v0.3)
@@ -108,14 +110,16 @@
     - RLS Verified: Enabled and forced (`relrowsecurity: true`, `relforcerowsecurity: true`) on all three tables. 5 policies on `projects`, 5 on `project_media`, 0 on `admin_users`. Table privileges audited.
     - Seed Exclusion Verified: Zero seed rows inserted; `count = 0` on all three tables.
     - PostgREST Data API Verified: Public `GET /rest/v1/projects` returns `[]` (HTTP 200); `GET /rest/v1/project_media` returns `[]` (HTTP 200); `GET /rest/v1/admin_users` returns HTTP 404 (`PGRST205`).
-    - Out-of-band Administrator Provisioning: `private.admin_users` remains empty; initial administrator account deferred to separate authorized dashboard insertion.
+    - Out-of-band Administrator Provisioning Deferral: Following pre-bootstrap analysis, Project Owner explicitly rejected the "Auto Confirm" workaround. Initial administrator identity creation and whitelist insertion into `private.admin_users` is formally **DEFERRED to Milestone M03** to preserve strict email verification without shortcuts.
+    - M03 Readiness Plan: Created [`docs/milestones/M02-database/M03_READINESS_PLAN.md`](docs/milestones/M02-database/M03_READINESS_PLAN.md) defining the architecture for `/auth/callback`, `/admin/login`, SSR session verification, invitation completion, edge guards, and subsequent guarded SQL insertion.
+    - Milestone M02 Completion Status: All database infrastructure deliverables complete and verified; ADR-009 12-point protocol passed (clean git, deterministic install, lint 0/0, tsc clean, vitest 4/4, build clean, npm audit 0 runtime vulns, 46/46 security tests green locally, zero seed leaks in production). Completion report created: [`docs/milestones/M02-database/COMPLETION.md`](docs/milestones/M02-database/COMPLETION.md). Status: **PASS WITH CONDITIONS (AWAITING CHATGPT COMPLETION REVIEW)**.
 
 ---
 
 ## 4. Next Actions
 
-1. Submit Gate C2B report (`docs/milestones/M02-database/GATE_C2B_HOSTED_MIGRATION_REPORT.md`) for ChatGPT and Project Owner review.
-2. Project Owner to authorize and perform out-of-band initial administrator insertion into `private.admin_users` via Supabase Dashboard SQL Editor.
-3. Verify administrator authentication and RLS functionality post-insertion.
-4. Prepare for M02 final milestone review and completion.
+1. Submit Milestone M02 Completion Report (`docs/milestones/M02-database/COMPLETION.md`) and M03 Readiness Plan (`docs/milestones/M02-database/M03_READINESS_PLAN.md`) for independent ChatGPT and Project Owner completion audit.
+2. Await explicit Project Owner authorization to commence Milestone M03 (Administrator Identity & Auth Boundaries).
+3. In M03, implement `/auth/callback`, `/admin/login`, SSR session management, and the genuine email-verified invitation onboarding flow.
+4. Execute the guarded `private.admin_users` insertion only after the administrator identity is verified through the M03 flow.
 5. GitHub remote push and Vercel production deployment remain strictly locked.
