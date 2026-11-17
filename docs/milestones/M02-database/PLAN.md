@@ -1,9 +1,9 @@
-# Milestone Implementation Plan: M02 — Database Integration & RLS Foundation (v0.2)
+# Milestone Implementation Plan: M02 — Database Integration & RLS Foundation (v0.3)
 
 > **Milestone ID:** M02
-> **Document Version:** v0.2 (Post-ChatGPT Gate A Audit Corrections)
+> **Document Version:** v0.3 (Post-ChatGPT Gate A v0.2 Corrections)
 > **Status:** `AWAITING REVIEW`
-> **Date:** 2026-11-16
+> **Date:** 2026-11-17
 > **Author:** Antigravity (Implementation Planner & Release Engineer)
 > **Reviewer:** ChatGPT (Architecture & Security Reviewer)
 > **Approval Authority:** Project Owner
@@ -11,12 +11,13 @@
 
 ---
 
-## 1. Revision History
+## 1. Revision History & Audit Correction Matrix
 
 | Version | Date | Author | Summary of Changes |
 |:---:|:---:|:---:|:---|
 | **v0.1** | 2026-11-16 | Antigravity | Initial draft of M02 database architecture, schema specification, Row Level Security matrix, Supabase client integration plan, migration strategy, and multi-gate protocol. |
-| **v0.2** | 2026-11-16 | Antigravity | **ChatGPT Audit Corrections Applied**: <br>1. Replaced `public.is_admin()` and `public.admin_users` with hardened private-schema architecture (`private.is_admin()`, `private.admin_users`), completely unexposed to PostgREST/Data API.<br>2. Adopted modern 2026 Supabase key naming conventions (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`), deprecating legacy JWT defaults.<br>3. Defined explicit 3-tier database test isolation (Local Disposable, Staging, Production) prohibiting destructive tests or resets against production.<br>4. Hardened Next.js SSR plan with `cookies().getAll()`/`setAll()`, verified `getUser()` server checks, and private cache-control headers.<br>5. Expanded test matrix to 33 distinct cases (26 RLS + 7 integrity constraints) verifying zero-row state retention on unauthorized mutations. |
+| **v0.2** | 2026-11-16 | Antigravity | ChatGPT Gate A audit corrections: private schema authorization (`private.is_admin()`, `private.admin_users`), modern key naming, 3-tier test isolation, SSR cookie handling, expanded test matrix. |
+| **v0.3** | 2026-11-17 | Antigravity | **ChatGPT Gate A v0.2 Corrections Applied**:<br>1. Finalized private administrator model: zero direct-access policies and zero grants on `private.admin_users`; revoked `anon` schema usage and function execute.<br>2. Corrected trigger execution context to `SECURITY INVOKER` and rewrote publication timestamp state machine to override tampering and preserve timestamps on updates.<br>3. Standardized on exact modern Supabase key formats (`sb_publishable_...` and `sb_secret_...`).<br>4. Separated testing into 26 Data API tests (`@supabase/supabase-js`) and 12 Direct PostgreSQL privilege tests (`psql` / controlled roles), establishing an exact 38-test catalog with state-retention assertions.<br>5. Clarified SSR authentication using `getClaims()` for verified claims and `getUser()` for fresh user records; detailed `private, no-store` cache controls.<br>6. Justified `email` column in `private.admin_users` and documented M07 draft media storage isolation. |
 
 ---
 
@@ -47,7 +48,7 @@ provides rigorous evidence of professional full-stack software engineering.
   - `private.admin_users` (UUID primary key referencing `auth.users(id)`, email, constraints).
   - `public.projects` (UUID primary key, title, unique slug, summary, problem/approach/outcome, technologies array, repository/demo URLs, draft/publish status, sort ordering, timestamps).
   - `public.project_media` (UUID primary key, foreign key CASCADE to `projects(id)`, storage path, alt text, sort order).
-  - Triggers for automatic `updated_at` timestamps and `published_at` synchronization.
+  - Row triggers for automatic `updated_at` timestamps and deterministic `published_at` synchronization.
 - **Security & Authorization Infrastructure:**
   - Internal `private` schema unexposed to PostgREST / Data API.
   - Table-level SQL grants (`REVOKE ALL FROM PUBLIC`, selective `GRANT` to `anon` and `authenticated`).
@@ -59,7 +60,7 @@ provides rigorous evidence of professional full-stack software engineering.
   - Typed client factories: Browser client (`createBrowserClient`) and Server client (`createServerClient` with Next.js `cookies()`).
   - Scrubbed `.env.example` documenting required environment variables.
 - **Verification & Testing:**
-  - Real database negative-access RLS tests (`tests/database/rls.test.ts`) executed against an isolated test environment.
+  - Comprehensive 38-test security and constraint test suite (26 Data API tests + 12 Direct PostgreSQL tests) executed against an isolated test environment (Tier A/B).
   - Full compliance with the ADR-009 12-point alternative verification protocol.
 
 ### 3.2 Explicit Non-Goals (Deferred to Later Milestones)
@@ -88,9 +89,9 @@ portfolio/
 ├── docs/
 │   ├── milestones/
 │   │   └── M02-database/
-│   │       ├── PLAN.md              # [REVISED v0.2] This implementation plan
-│   │       ├── SCHEMA_SPEC.md       # [REVISED v0.2] Hardened PostgreSQL schema specification
-│   │       └── RLS_MATRIX.md        # [REVISED v0.2] Hardened RLS policies and 33-case test matrix
+│   │       ├── PLAN.md              # [REVISED v0.3] This implementation plan
+│   │       ├── SCHEMA_SPEC.md       # [REVISED v0.3] Hardened PostgreSQL schema specification
+│   │       └── RLS_MATRIX.md        # [REVISED v0.3] Hardened RLS policies and 38-case test matrix
 ├── supabase/
 │   ├── config.toml                  # [PLANNED Gate B] Supabase CLI configuration
 │   ├── seed.sql                     # [PLANNED Gate C] Local/test fixtures (draft & published projects)
@@ -106,7 +107,8 @@ portfolio/
 │           └── types.ts             # [PLANNED Gate C] Generated database TypeScript definitions
 ├── tests/
 │   └── database/
-│       └── rls.test.ts              # [PLANNED Gate D] Real database RLS negative test suite
+│       ├── rls.api.test.ts          # [PLANNED Gate D] Data API security tests (26 cases via @supabase/supabase-js)
+│       └── rls.sql.test.ts          # [PLANNED Gate D] Direct PostgreSQL privilege & kernel tests (12 cases via SQL)
 ├── .env.example                     # [PLANNED Gate B] Modern scrubbed environment variables template
 └── package.json                     # [PLANNED Gate B] Add @supabase/supabase-js & @supabase/ssr
 ```
@@ -120,16 +122,16 @@ portfolio/
 - **`@supabase/ssr`:** Official Supabase package designed specifically for Next.js App Router. Handles cookie serialization, session refreshes, and prevents cookie-handling vulnerabilities across Server Components, Server Actions, and Route Handlers.
 
 ### 6.2 Modern API Key Architecture
-Supabase recently introduced modern API key conventions that replace legacy JWT-based `anon` and `service_role` keys:
-- **`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`sb_pub_...`)**: Public publishable key used by browser and server runtimes. Governed entirely by PostgreSQL SQL grants and Row Level Security.
-- **`SUPABASE_SECRET_KEY` (`sb_sec_...`)**: Secret administrative key. Bypasses RLS. Restricted strictly to offline maintenance and test scripts in isolated environments. **NEVER** exposed to client bundles, public variables, or application runtime.
+Supabase uses modern API key conventions that replace legacy JWT-based `anon` and `service_role` keys:
+- **`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`sb_publishable_...`)**: Public publishable key used by browser and server runtimes. Governed entirely by PostgreSQL SQL grants and Row Level Security.
+- **`SUPABASE_SECRET_KEY` (`sb_secret_...`)**: Secret administrative key. Bypasses RLS. Restricted strictly to offline maintenance and test scripts in isolated environments. **NEVER** exposed to client bundles, public variables, or application runtime.
 
-| Variable Name | Scope | Sensitivity | Purpose |
-|:---|:---|:---:|:---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Public (Client + Server) | Low (Public URL) | Base URL of the Supabase project REST API. |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public (Client + Server) | Low (Subject to RLS) | Publishable client key (`sb_pub_...`). |
-| `SUPABASE_SECRET_KEY` | Private (Offline Test/Admin Only) | **CRITICAL (Bypasses RLS)** | Never in client code; never in Vercel public settings; ignored by Git. |
-| `SUPABASE_DB_PASSWORD` | Private (Owner Only) | **CRITICAL** | Direct PostgreSQL connection password for Supabase CLI. |
+| Variable Name | Scope | Sensitivity | Purpose | Format |
+|:---|:---|:---:|:---|:---:|
+| `NEXT_PUBLIC_SUPABASE_URL` | Public (Client + Server) | Low (Public URL) | Base URL of the Supabase project REST API. | `https://<ref>.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public (Client + Server) | Low (Subject to RLS) | Modern publishable client key. | `sb_publishable_...` |
+| `SUPABASE_SECRET_KEY` | Private (Offline Test/Admin Only) | **CRITICAL (Bypasses RLS)** | Never in client code; never in Vercel public settings; ignored by Git. | `sb_secret_...` |
+| `SUPABASE_DB_PASSWORD` | Private (Owner Only) | **CRITICAL** | Direct PostgreSQL connection password for Supabase CLI. | Plaintext secret |
 
 ### 6.3 Next.js SSR Client Factories
 1. **Browser Client (`src/lib/supabase/client.ts`):**
@@ -178,9 +180,10 @@ Supabase recently introduced modern API key conventions that replace legacy JWT-
    ```
 
 ### 6.4 Server-Side Authentication & Cache Security
-1. **Verified User Authentication (`getUser()` vs `getSession()`):**
-   - In Next.js Server Components, Server Actions, and Route Handlers, authentication must **always** be verified via `await supabase.auth.getUser()`.
-   - Calling `supabase.auth.getSession()` on the server is unsafe because it reads unverified cookie payloads without re-validating the token against Supabase Auth.
+1. **Verified Claims vs User Record (`getClaims()` and `getUser()`):**
+   - In Next.js Server Components, fast reads can verify identity claims via `await supabase.auth.getClaims()`.
+   - Before executing sensitive Server Actions or administrative mutations, authentication must **always** be verified via `await supabase.auth.getUser()`, which contacts the Supabase Auth server to guarantee the session has not been revoked.
+   - Authorizing operations based solely on `supabase.auth.getSession()` is strictly prohibited because `getSession()` reads unverified client cookie payloads without contacting the Auth server.
 2. **Cache-Control & Private Data Protection:**
    - Any Server Action, API Route, or page rendering authenticated/admin content must emit HTTP headers:
      `Cache-Control: private, no-store, max-age=0`
@@ -192,7 +195,7 @@ Supabase recently introduced modern API key conventions that replace legacy JWT-
 
 ## 7. Database Test Isolation Architecture
 
-To protect production data and prevent destructive operations against live environments, M02 defines three strictly segregated database tiers:
+To protect production data and prevent destructive operations against live environments, M02 enforces a 3-tier database segregation model:
 
 ```
 ┌────────────────────────────────┐
@@ -212,7 +215,7 @@ To protect production data and prevent destructive operations against live envir
 ```
 
 ### Strict Test Rules:
-- **Destructive RLS Tests**: All 26 RLS negative authorization tests and 7 constraint violation tests must execute against **Tier A** (local container) or **Tier B** (isolated staging).
+- **Destructive RLS Tests**: All 38 security and constraint tests must execute against **Tier A** (local container) or **Tier B** (isolated staging).
 - **Production Safety Invariant**: The production Supabase project must **NEVER** be subjected to `supabase db reset`, automated test user creation, or test mutation suites.
 - **Seed Data Discipline**: `supabase/seed.sql` is strictly for local development and test fixtures. Production content seeding is performed separately and verified by the owner.
 
@@ -246,24 +249,24 @@ To protect production data and prevent destructive operations against live envir
 M02 will execute across four sequential, gated checkpoints:
 
 ```
-[ Gate A: Plan & Spec v0.2 ] ──► (ChatGPT Audit & Owner Approval)
+[ Gate A: Plan & Spec v0.3 ] ──► (ChatGPT Audit & Owner Approval)
                                             │
 [ Gate B: Provisioning & Config ] ─────────► (Owner Supplies Credentials)
                                             │
 [ Gate C: Migrations & Client ] ───────────► (SQL Schema & Types Applied)
                                             │
-[ Gate D: RLS Tests & Audit ] ─────────────► (33 Tests Green & Final Report)
+[ Gate D: RLS Tests & Audit ] ─────────────► (38 Tests Green & Final Report)
 ```
 
 ### Gate A — Database Architecture and Security Planning (CURRENT GATE)
-- **Deliverables:** `PLAN.md` (v0.2), `SCHEMA_SPEC.md` (v0.2), `RLS_MATRIX.md` (v0.2) on branch `feat/m02-database`.
+- **Deliverables:** `PLAN.md` (v0.3), `SCHEMA_SPEC.md` (v0.3), `RLS_MATRIX.md` (v0.3) on branch `feat/m02-database`.
 - **Exit Criteria:** ChatGPT architecture and security audit accepted; explicit Project Owner authorization to proceed to Gate B.
 - **Actions:** Zero code changes; zero Supabase provisioning.
 
 ### Gate B — Owner-Approved Supabase Provisioning and Local Configuration
 - **Prerequisites:** Project Owner provisions a new project on Supabase Free Tier.
 - **Deliverables:**
-  - Owner populates `.env.local` with real project URL and publishable key.
+  - Owner populates `.env.local` with real project URL and publishable key (`sb_publishable_...`).
   - Antigravity updates `.env.example` with modern scrubbed placeholders.
   - Install `@supabase/supabase-js` and `@supabase/ssr` via `npm install`.
   - Initialize Supabase CLI configuration (`supabase/config.toml`).
@@ -281,11 +284,11 @@ M02 will execute across four sequential, gated checkpoints:
 
 ### Gate D — Real Database Security Tests, Integration Verification & Milestone Audit
 - **Deliverables:**
-  - Create and execute `tests/database/rls.test.ts` against an isolated test database (Tier A/B).
-  - Verify all 26 RLS matrix test cases and 7 constraint violation test cases (33 total).
+  - Create and execute `tests/database/rls.api.test.ts` (26 Data API tests) and `tests/database/rls.sql.test.ts` (12 Direct PostgreSQL tests) against an isolated test database (Tier A/B).
+  - Verify all 38 test cases pass, including explicit state retention assertions.
   - Execute the full ADR-009 12-point alternative verification protocol (lint, typecheck, Vitest, build, Playwright, npm audit, secret scan).
   - Produce `docs/milestones/M02-database/COMPLETION.md`.
-- **Exit Criteria:** 33/33 database security and constraint tests pass; zero secret leaks; ChatGPT completion audit passed.
+- **Exit Criteria:** 38/38 database security and constraint tests pass; zero secret leaks; ChatGPT completion audit passed.
 
 ---
 
@@ -302,7 +305,7 @@ Because GitHub Actions runner execution remains blocked under `ERR-006` and waiv
 7. **Production Compilation:** `npm run build` compiles cleanly with static prerendering intact.
 8. **Dependency Audit:** `npm audit --omit=dev` reports 0 vulnerabilities in runtime dependencies.
 9. **Secrets & Privacy Audit:** Regex scan across repository ensuring no secret keys or personal data exist in tracked files.
-10. **Real Database RLS Verification:** Automated Node.js/Vitest test script executing 33 tests against isolated database.
+10. **Real Database RLS Verification:** Automated test scripts executing 38 tests across Data API and Direct SQL harnesses against an isolated database.
 11. **Durable On-Disk Documentation:** Actual commands, exit codes, and test outputs recorded in `docs/milestones/M02-database/`.
 12. **Independent ChatGPT Audit:** Milestone reviewed by ChatGPT before closure.
 

@@ -1,12 +1,12 @@
 # Project Memory — Durable State & Architecture Context
 
-> **Last Updated:** 2026-11-16
-> **Current State:** **M02 PLANNING (GATE A v0.2 REVISION) — BRANCH feat/m02-database — AWAITING CHATGPT AUDIT & OWNER APPROVAL**
-> **Active Milestone:** `docs/milestones/M02-database/PLAN.md` (Awaiting Review, v0.2)
+> **Last Updated:** 2026-11-17
+> **Current State:** **M02 PLANNING (GATE A v0.3 REVISION) — BRANCH feat/m02-database — AWAITING CHATGPT AUDIT & OWNER APPROVAL**
+> **Active Milestone:** `docs/milestones/M02-database/PLAN.md` (Awaiting Review, v0.3)
 > **M01 Completion Report:** `docs/milestones/M01-foundation/COMPLETION.md` (Accepted & Finalized, Tag `m01-complete` at `699cfd0`)
-> **M02 Plan:** `docs/milestones/M02-database/PLAN.md` (Revised v0.2)
-> **M02 Schema Spec:** `docs/milestones/M02-database/SCHEMA_SPEC.md` (Revised v0.2)
-> **M02 RLS Matrix:** `docs/milestones/M02-database/RLS_MATRIX.md` (Revised v0.2)
+> **M02 Plan:** `docs/milestones/M02-database/PLAN.md` (Revised v0.3)
+> **M02 Schema Spec:** `docs/milestones/M02-database/SCHEMA_SPEC.md` (Revised v0.3)
+> **M02 RLS Matrix:** `docs/milestones/M02-database/RLS_MATRIX.md` (Revised v0.3)
 
 ---
 
