@@ -86,21 +86,23 @@
     - Custom WSL2 Docker wrapper audited (`docker.exe` via `CreateProcessA` to `wsl.exe -e docker`), logging routine stripped, `docker_call.log` deleted, keepalive daemon noted (`task-2256`).
     - Git history audit: Commit `276bea3` documented with local demo key; recommendation to squash/rebase `feat/m02-database` before merge into `main` pending owner authorization.
     - Strictly local execution: Zero remote Supabase modifications (`zvmjdssztebhzpplkcrn` untouched), zero remote Git pushes, zero Vercel deployments.
-  - Gate C2A (Hosted Supabase Read-Only Preflight & Migration Dry Run): **COMPLETED & EMPIRICALLY VERIFIED — STATUS: PASS WITH CONDITIONS** (`GATE_C2A_HOSTED_PREFLIGHT_REPORT.md`).
-    - Authenticated CLI via interactive `npx supabase login`; verified project `zvmjdssztebhzpplkcrn` (`asmkhalid111's Portfolio`, `ap-south-1`, PostgreSQL `17.12.0.000`, status `ACTIVE_HEALTHY`, `linked: false`).
-    - Scope strictly read-only: Zero hosted migrations executed, zero database writes, zero seed data uploaded (`seeds: []`), zero Auth accounts created, zero Vercel deployments.
-    - PostgreSQL catalog inspected via read-only queries: virgin state confirmed (`private` schema absent, `supabase_migrations` absent, zero application tables).
+  - Gate C2A (Hosted Supabase Read-Only Preflight & Migration Dry Run): **COMPLETED & RECONCILED — STATUS: PASS WITH CONDITIONS** (`GATE_C2A_HOSTED_PREFLIGHT_REPORT.md`).
+    - Authenticated CLI via interactive `npx supabase login`; verified project `zvmjdssztebhzpplkcrn` (`asmkhalid111's Portfolio`, `ap-south-1`, PostgreSQL `17.12.0.000`, status `ACTIVE_HEALTHY`, `created_at: 2026-11-17T13:58:57.520846Z`, `linked: false`).
+    - Verified migration file checksums on disk: Migration 1 `E52F1C34...`, Migration 2 `78FDCD22...`, Migration 3 `26AB5608...` (LF line endings; `git diff 096b86a..HEAD -- supabase/migrations/` clean and unchanged).
+    - Scope strictly read-only for application objects: Zero application migrations executed, zero application tables created, zero seed data uploaded (`seeds: []`), zero Auth accounts created, zero Vercel deployments.
+    - PostgreSQL catalog inspected via read-only queries: `private` schema absent, `supabase_migrations` absent, application tables `projects`, `project_media`, `admin_users` absent (target application scope checked).
     - Remote migration list: 3 local migrations pending (`20261116000001`, `20261116000002`, `20261116000003`), 0 remote applied.
-    - Migration dry run executed: `npx supabase db push --dry-run --remote=zvmjdssztebhzpplkcrn --skip-vault` reported `dryRun: true`, `upToDate: false`, exactly 3 migrations, `seeds: []`, `roles: []`.
-    - Post-dry-run database integrity verified: `to_regclass('public.projects')` remains `null`.
-    - Control plane ephemeral role documented: short-lived `cli_login_postgres` (5-minute rolling TTL) provisioned by Supabase cloud control plane for token authentication over connection pooling.
+    - Migration dry run executed: `npx supabase db push --dry-run --remote=zvmjdssztebhzpplkcrn --skip-vault` reported `dryRun: true`, `upToDate: false`, exactly 3 migrations, `seeds: []`, `roles: []` (where `roles: []` indicates zero custom declarative role migrations pending).
+    - Post-dry-run application database integrity verified: `to_regclass('public.projects')` remains `null`.
+    - Platform login-role exception disclosed: Supabase cloud control plane provisioned short-lived `cli_login_postgres` (5-minute rolling TTL) to broker token authentication over connection pooling. Formally recorded as a C2A authorization-boundary exception requiring explicit Project Owner acknowledgement before Gate C2B.
     - IPv4 routing: Authenticated CLI queries Management API and routes over IPv4 Supavisor Session pooler (port 5432), completely bypassing IPv6 direct-connection limitations.
-    - Gate C2B (Hosted Database Migration Execution) remains **STRICTLY LOCKED** pending Project Owner authorization and ChatGPT review.
+    - Gate C2B (Hosted Database Migration Execution) remains **STRICTLY LOCKED** pending explicit Project Owner authorization and ChatGPT review.
 
 ---
 
 ## 4. Next Actions
 
-1. Submit Gate C2A report (`docs/milestones/M02-database/GATE_C2A_HOSTED_PREFLIGHT_REPORT.md`) for ChatGPT and Project Owner review.
-2. Await explicit Project Owner authorization for Gate C2B (Hosted Migration Execution).
-3. Gate C2B remains **STRICTLY LOCKED**. Strictly NO hosted migration execution or remote Git pushes.
+1. Submit reconciled Gate C2A report (`docs/milestones/M02-database/GATE_C2A_HOSTED_PREFLIGHT_REPORT.md`) for ChatGPT and Project Owner review.
+2. Project Owner to acknowledge the platform-level `cli_login_postgres` authorization-boundary exception.
+3. Await explicit Project Owner authorization for Gate C2B (Hosted Migration Execution).
+4. Gate C2B remains **STRICTLY LOCKED**. Strictly NO hosted migration execution, remote queries, or remote Git pushes.

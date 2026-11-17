@@ -18,22 +18,24 @@ In accordance with explicit Project Owner authorization:
 
 Gate C2A was successfully executed strictly as an **authenticated read-only inspection and migration dry run** against the hosted project `zvmjdssztebhzpplkcrn`.
 
-### Absolute Environment Safety Confirmation:
-- **Zero Hosted Migrations Executed**: No `CREATE`, `ALTER`, `DROP`, `GRANT`, `REVOKE`, `INSERT`, `UPDATE`, or `DELETE` statements were executed against the hosted database.
-- **Zero Remote Mutations**: No Auth users created, no Storage buckets modified, no settings altered on project `zvmjdssztebhzpplkcrn`.
+### Environment Safety & Mutation Scope Confirmation:
+- **Zero Application Migrations Executed**: No application DDL or DML statements (`CREATE`, `ALTER`, `DROP`, `GRANT`, `REVOKE`, `INSERT`, `UPDATE`, `DELETE`) were executed.
+- **Zero Application Tables Created**: Catalog queries confirm `public.projects`, `public.project_media`, and `private.admin_users` remain uncreated.
 - **Zero Seed Uploads**: No test fixtures or development seed data were sent to the cloud (`seeds: []`).
+- **Zero Application Administrators Provisioned**: No entries created in Auth or database.
 - **Zero Production Deployments**: Vercel production deployment was untouched.
 - **Zero Git Remote Pushes**: All work remains strictly local on branch `feat/m02-database`.
+- **Platform-Level Exception (C2A Authorization Boundary Exception)**: As part of establishing the authenticated connection over the connection pooler, the Supabase Cloud control plane provisioned a temporary database login role (`cli_login_postgres`) with a 5-minute rolling TTL. No user or application roles were modified.
 
 ### Overall Outcome:
 **Verdict: M02 GATE C2A PASS WITH CONDITIONS**<br>
 All preflight conditions are empirically verified:
-1. **Target Identity Confirmed**: Authenticated CLI confirms project `zvmjdssztebhzpplkcrn` (`asmkhalid111's Portfolio`, region `ap-south-1`, PostgreSQL `17.12.0.000`, status `ACTIVE_HEALTHY`).
-2. **Schema Baseline Verified**: Live PostgreSQL catalog queries confirm that `private` schema does not exist, `supabase_migrations` does not exist, and zero application tables exist (`admin_users`, `projects`, `project_media`).
+1. **Target Identity Confirmed**: Authenticated CLI confirms project `zvmjdssztebhzpplkcrn` (`asmkhalid111's Portfolio`, region `ap-south-1`, PostgreSQL `17.12.0.000`, status `ACTIVE_HEALTHY`, `created_at: 2026-11-17T13:58:57.520846Z`).
+2. **Target Scope Verified**: Live PostgreSQL catalog queries confirm that `private` schema does not exist, `supabase_migrations` does not exist, and zero conflicting application tables exist (`admin_users`, `projects`, `project_media`). Only the relevant application objects and namespaces were evaluated; no claim is made that the entire hosted database is empty.
 3. **Migration History Verified**: 3 local migrations listed as pending; 0 remote migrations applied.
-4. **Dry Run Clean**: `npx supabase db push --dry-run` successfully previews exactly the 3 approved migrations with zero custom roles and zero seed data.
-5. **Conditions Documented**:
-   - The Supabase Cloud control plane automatically provisions a short-lived (5-minute TTL) `cli_login_postgres` role in `postgres` to broker authenticated CLI connections over connection pooling.
+4. **Dry Run Clean**: `npx supabase db push --dry-run` successfully previews exactly the 3 approved migrations with `seeds: []` and `roles: []` (where `roles: []` confirms zero declarative role migrations are planned, distinct from the temporary platform login role).
+5. **Conditions & Exception Documented**:
+   - The Supabase Cloud control plane automatically provisions a short-lived (5-minute TTL) `cli_login_postgres` role in `postgres` to broker authenticated CLI connections over connection pooling. This platform mutation is recorded as a C2A authorization-boundary exception requiring Project Owner acknowledgement before Gate C2B.
    - Gate C2B remains strictly locked pending explicit Project Owner authorization.
 
 ---
@@ -112,6 +114,11 @@ The local version-controlled migration files under `supabase/migrations/` were a
 - Zero hardcoded administrator user accounts or real email addresses.
 - Zero development test fixtures.
 - Zero deployment-specific secrets or sensitive credentials.
+
+### Hash Verification & Line-Ending Audit:
+- SHA-256 hashes were calculated directly from the migration files on disk (`Get-FileHash -Algorithm SHA256` / `hashlib.sha256`) using native LF line endings.
+- Git repository audit confirms that all three SQL migration files are byte-for-byte identical to the reviewed Gate C1 baseline (`git diff --name-status 096b86a..HEAD -- supabase/migrations/` returns zero changes; unchanged since `d9971dc`).
+- Any previous lowercase hash values reported in conversational chat summaries were erroneous synthetic entries; the formal values recorded above represent the authentic on-disk checksums.
 
 ---
 
@@ -220,7 +227,7 @@ Output:
   ]
 }
 ```
-*Confirmed: Database has never had migrations applied; virgin state.*
+*Confirmed: Migration history table (`supabase_migrations.schema_migrations`) does not exist; no migrations have ever been applied to this project.*
 
 ### 7.6 Remote Migration History Inspection
 ```powershell
@@ -277,7 +284,7 @@ Output:
   }
 }
 ```
-*Confirmed: Exactly 3 approved migrations pending; `seeds: []` strictly empty; `roles: []` strictly empty.*
+*Confirmed: Exactly 3 approved migrations pending; `seeds: []` strictly empty; `roles: []` strictly empty (confirming zero declarative role migrations are pending in the migration files, distinct from the platform control-plane temporary login role).*
 
 ### 7.8 Post-Dry-Run Database Zero-Mutation Verification
 ```powershell
@@ -291,7 +298,7 @@ Output:
   ]
 }
 ```
-*Empirical confirmation: Zero tables created. Zero modifications occurred on the hosted database.*
+*Empirical confirmation: Zero application tables created (`public.projects` remains null). No application schema or data modifications occurred on the hosted database.*
 
 ---
 
@@ -299,16 +306,24 @@ Output:
 
 1. **IPv4 Connection Pooler Resolution**:
    - The Supabase CLI v3 successfully leveraged the Management API to resolve the project's IPv4 Supavisor connection pooler (`aws-0-ap-south-1.pooler.supabase.com:5432` Session mode), completely bypassing the host network's lack of IPv6 routing.
-2. **Ephemeral Control-Plane Login Role (`cli_login_postgres`)**:
-   - During `migration list` and `db push --dry-run`, Supabase displayed `Initialising login role...`.
-   - Inspection of `pg_catalog.pg_roles` revealed that Supabase's cloud control plane automatically provisions a temporary role:
+2. **Temporary Platform Login Role (`cli_login_postgres`) & Authorization Boundary Exception**:
+   - During `migration list` and `db push --dry-run`, Supabase CLI output displayed `Initialising login role...`.
+   - Inspection of `pg_catalog.pg_roles` confirmed the presence of:
      ```
      rolname: "cli_login_postgres"
      member_of: "postgres"
      rolcanlogin: true
      rolvaliduntil: "<5-minute rolling TTL>"
      ```
-   - **Security Finding**: This is Supabase's standard mechanism for passwordless token authentication over connection pooling. The role has a strict 5-minute expiration timestamp (`rolvaliduntil`). Zero user or application roles were modified.
+   - **Precise Scope & Impact Disclosure**:
+     - No application migrations were applied.
+     - No application tables were created.
+     - No development seeds were uploaded.
+     - No application administrator was provisioned.
+     - Supabase's cloud control plane did provision a temporary database login role (`cli_login_postgres`) to broker the authenticated pooler connection.
+     - The `roles: []` field in the migration dry run output indicates that no declarative custom role migrations are defined in `supabase/migrations/`; it does NOT indicate that the platform control plane made no temporary connection-broker role.
+     - **Authorization-Boundary Exception**: Because Gate C2A was authorized strictly as a read-only preflight and dry run, the control-plane creation of this database role represents a platform-level side effect that crosses the pure read-only threshold. This is formally recorded as a C2A authorization-boundary exception requiring explicit Project Owner acknowledgement before Gate C2B can proceed.
+     - In strict accordance with the read-only mandate, no attempt was made to delete, revoke, renew, or alter this role, and no further remote database connections were established.
 3. **Strict Seed Exclusion**:
    - Confirmed both via process configuration (`$env:SUPABASE_DB_SEED_ENABLED = "false"`) and via dry-run output (`"seeds": []`). Zero development fixtures will be transferred.
 4. **Credential Protection**:
@@ -322,12 +337,12 @@ Output:
 |:---|:---|:---|:---:|
 | **A. Target Identity** | Exactly matches `zvmjdssztebhzpplkcrn` | `zvmjdssztebhzpplkcrn` (`asmkhalid111's Portfolio`, `ap-south-1`) | **PASSED** |
 | **B. Access Control** | Authenticated read-only access established | Authenticated via `supabase login`; read-only queries executed cleanly | **PASSED** |
-| **C. Migration History** | Remote history table inspected and verified | Virgin database (`migration_history_table: null`, 0 remote applied) | **PASSED** |
-| **D. Schema Compatibility** | No conflicting application tables on hosted DB | Verified: `private` does not exist; `projects` / `media` / `admin_users` absent | **PASSED** |
+| **C. Migration History** | Remote history table inspected and verified | Virgin migration history (`migration_history_table: null`, 0 remote applied) | **PASSED** |
+| **D. Schema Compatibility** | No conflicting application tables on hosted DB | Verified: `private` does not exist; application tables `projects`, `media`, `admin_users` absent (target scope checked) | **PASSED** |
 | **E. Seed Exclusion** | Development seed files unambiguously excluded | Empirically verified: `"seeds": []` in dry run JSON output | **PASSED** |
 | **F. SQL Migration Scope** | Exactly 3 approved migrations, checksums verified | Verified: exactly 3 migrations in dry run, checksums match v0.3 | **PASSED** |
 | **G. Security & Privacy** | Zero credentials printed, committed, or exposed | Clean; no tokens, passwords, or secrets leaked | **PASSED** |
-| **H. Production Integrity** | Strictly read-only; zero mutations to hosted project | Verified: `to_regclass('public.projects')` remains `null` | **PASSED** |
+| **H. Production Integrity** | Zero application mutations; platform login role exception documented | Verified: `to_regclass('public.projects')` is `null`; platform login role `cli_login_postgres` documented as exception | **PASS WITH EXCEPTION** |
 
 ### **FINAL VERDICT: M02 GATE C2A PASS WITH CONDITIONS**
 
@@ -337,7 +352,7 @@ Output:
 
 The preflight dry run is fully validated, completely clean, and ready for deployment.
 
-### Non-Critical Conditions Documented:
-1. **Control-Plane Ephemeral Role**: The Supabase cloud control plane provisions the short-lived `cli_login_postgres` role (5-minute TTL) to broker authenticated CLI connections over connection pooling.
+### Conditions & Required Acknowledgements:
+1. **Platform Login-Role Authorization Exception**: The Supabase cloud control plane provisioned a temporary `cli_login_postgres` role (5-minute rolling TTL) to broker authenticated CLI connections over connection pooling. The Project Owner must explicitly acknowledge this platform-level side effect as part of authorizing Gate C2B.
 2. **Out-of-Band Admin Provisioning**: Following migration execution in Gate C2B, the initial administrator must be inserted via the Supabase Dashboard SQL Editor into `private.admin_users`, as PostgREST APIs cannot access the `private` schema by design.
 3. **Gate C2B Strict Stop**: Gate C2B (actual cloud database migration execution) remains **STRICTLY LOCKED** pending explicit Project Owner authorization and ChatGPT review.
