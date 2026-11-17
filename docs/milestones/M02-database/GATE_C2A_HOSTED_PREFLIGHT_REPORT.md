@@ -1,13 +1,13 @@
 # Milestone M02 Gate C2A — Hosted Supabase Read-Only Preflight & Migration Dry Run Report
 
-> **Milestone:** M02 — Database Integration & RLS Foundation  
-> **Gate:** Gate C2A — Hosted Supabase Read-Only Preflight & Migration Dry Run  
-> **Status:** **BLOCKED (ACTIONABLE AUTHENTICATION & NETWORK PRECONDITIONS)**  
-> **Date:** 2026-11-18  
-> **Branch:** `feat/m02-database`  
-> **Baseline Commit:** `096b86ab7cb64ecbe10293c686f881d93da3e77d` (`096b86a`)  
-> **Target Project Reference:** `zvmjdssztebhzpplkcrn` (`asmkhalid111's Portfolio`)  
-> **Executing Engineer:** Senior Supabase Deployment Engineer & PostgreSQL Security Auditor  
+> **Milestone:** M02 — Database Integration & RLS Foundation<br>
+> **Gate:** Gate C2A — Hosted Supabase Read-Only Preflight & Migration Dry Run<br>
+> **Status:** **BLOCKED (ACTIONABLE AUTHENTICATION & NETWORK PRECONDITIONS)**<br>
+> **Date:** 2026-11-18 (Updated in Continuation)<br>
+> **Branch:** `feat/m02-database`<br>
+> **Preflight Baseline Commit:** `3b40b7fce5ee5fc244e52951d7f909c6c3f29b10` (`3b40b7f`)<br>
+> **Target Project Reference:** `zvmjdssztebhzpplkcrn` (`asmkhalid111's Portfolio`)<br>
+> **Executing Engineer:** Senior Supabase Deployment Engineer & PostgreSQL Security Auditor
 
 ---
 
@@ -153,10 +153,18 @@ Diagnostic:
 {"target":{"kind":"linked","project_ref":"zvmjdssztebhzpplkcrn","environment":"unverified"},"_tag":"Error","error":{"code":"DbConfigIpv6Error","message":"IPv6 is not supported on your current network","suggestion":"Pass the project's connection pooler URL with --remote=<pooler db-url> to connect over IPv4."}}
 ```
 
-### Technical Root Cause Analysis:
-1. **Management API Authentication**: Commands querying the Supabase API directly (`projects list`, `db query`) fail because the local developer environment has not yet run `supabase login`.
+### Technical Root Cause & Architecture Analysis:
+1. **Management API Authentication**: Commands querying the Supabase API directly (`projects list`, `db query`) fail because the local developer environment has not yet run `supabase login`. The CLI returns `AccessTokenRequiredError: Access token not provided`.
 2. **Direct PostgreSQL DNS vs. Network Capabilities**: Commands attempting direct database connections (`migration list`, `db push`) resolve `db.zvmjdssztebhzpplkcrn.supabase.co`. Supabase Free tier provides direct database connections over IPv6 only. Because the local host network interface does not have IPv6 connectivity, direct connection attempts fail with `DbConfigIpv6Error`.
-3. **Connection Pooling Resolution**: Once the CLI is authenticated via `supabase login`, it can query the Management API to obtain the project's IPv4 Supavisor connection pooler configuration (`aws-0-ap-south-1.pooler.supabase.com`), resolving the IPv6 limitation over IPv4.
+3. **Supavisor Connection Pooler Architecture & Compatibility**:
+   - Supabase Free tier provides IPv4 connectivity via the Supavisor connection pooler (`aws-0-ap-south-1.pooler.supabase.com`).
+   - Two pooling modes are exposed:
+     - **Session Mode (port 5432)**: Allocates a dedicated PostgreSQL connection per client session. Supports multi-statement DDL transactions, schema locks, and session-level advisory locks. **This is the only pooler mode compatible with database migrations and schema inspection.**
+     - **Transaction Mode (port 6543)**: Allocates connections per transaction. Incompatible with multi-statement DDL migrations, prepared statements, and session-level advisory locks.
+   - Once authenticated via `supabase login`, the CLI automatically resolves the Session pooler over IPv4 via the Management API.
+4. **Temporary PostgreSQL Role Analysis**:
+   - The CLI v3 architecture was specifically analyzed to determine if remote authentication would provision temporary PostgreSQL roles on the hosted cluster.
+   - **Finding**: Supabase CLI does NOT create temporary database roles on the hosted PostgreSQL instance. When authenticated via an access token, it issues queries through the Supabase Management control plane or directly connects as the database role configured in the project pooler. Zero temporary roles or remote role writes occur.
 
 ---
 

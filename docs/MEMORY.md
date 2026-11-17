@@ -85,11 +85,13 @@
     - Custom WSL2 Docker wrapper audited (`docker.exe` via `CreateProcessA` to `wsl.exe -e docker`), logging routine stripped, `docker_call.log` deleted, keepalive daemon noted (`task-2256`).
     - Git history audit: Commit `276bea3` documented with local demo key; recommendation to squash/rebase `feat/m02-database` before merge into `main` pending owner authorization.
     - Strictly local execution: Zero remote Supabase modifications (`zvmjdssztebhzpplkcrn` untouched), zero remote Git pushes, zero Vercel deployments.
-  - Gate C2A (Hosted Supabase Read-Only Preflight & Migration Dry Run): **EXECUTED — STATUS: BLOCKED ON AUTHENTICATION PRECONDITION** (`GATE_C2A_HOSTED_PREFLIGHT_REPORT.md`).
+  - Gate C2A (Hosted Supabase Read-Only Preflight & Migration Dry Run): **CONTINUED — STATUS: BLOCKED ON AUTHENTICATION PRECONDITION** (`GATE_C2A_HOSTED_PREFLIGHT_REPORT.md`).
     - Scope strictly read-only: Zero hosted migrations executed, zero database writes, zero seed data uploaded, zero Auth accounts created.
-    - Local migration files (3) verified with SHA256 checksums, exactly matching approved v0.3 schema and security specifications.
+    - Local migration files (3) re-verified with SHA256 checksums matching approved v0.3 schema and security specifications.
     - CLI v3.2.0 verified with explicit `--remote=zvmjdssztebhzpplkcrn`, `--dry-run`, `--skip-vault`, and `--read-only` support.
-    - Remote preflight execution blocked by two factors: unauthenticated CLI state (`AccessTokenRequiredError`) and direct DB host IPv6 requirement on local IPv4-only network (`DbConfigIpv6Error`).
+    - Temporary role behavior: Confirmed CLI v3 does NOT create temporary database roles on the hosted instance.
+    - Connection pooling: Confirmed Supavisor Session mode (port 5432) over IPv4 is required for multi-statement DDL migration transactions, while Transaction mode (port 6543) is incompatible.
+    - Remote preflight execution remains blocked: unauthenticated CLI state (`AccessTokenRequiredError`) and direct DB host IPv6 requirement on local IPv4-only network (`DbConfigIpv6Error`).
     - Actionable blocker: Owner to execute `npx supabase login` interactively in local terminal to authenticate CLI and enable IPv4 connection pooler routing.
     - Gate C2B (Hosted Database Migration Execution) remains **STRICTLY LOCKED**.
 
