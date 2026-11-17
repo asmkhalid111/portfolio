@@ -85,11 +85,19 @@
     - Custom WSL2 Docker wrapper audited (`docker.exe` via `CreateProcessA` to `wsl.exe -e docker`), logging routine stripped, `docker_call.log` deleted, keepalive daemon noted (`task-2256`).
     - Git history audit: Commit `276bea3` documented with local demo key; recommendation to squash/rebase `feat/m02-database` before merge into `main` pending owner authorization.
     - Strictly local execution: Zero remote Supabase modifications (`zvmjdssztebhzpplkcrn` untouched), zero remote Git pushes, zero Vercel deployments.
+  - Gate C2A (Hosted Supabase Read-Only Preflight & Migration Dry Run): **EXECUTED — STATUS: BLOCKED ON AUTHENTICATION PRECONDITION** (`GATE_C2A_HOSTED_PREFLIGHT_REPORT.md`).
+    - Scope strictly read-only: Zero hosted migrations executed, zero database writes, zero seed data uploaded, zero Auth accounts created.
+    - Local migration files (3) verified with SHA256 checksums, exactly matching approved v0.3 schema and security specifications.
+    - CLI v3.2.0 verified with explicit `--remote=zvmjdssztebhzpplkcrn`, `--dry-run`, `--skip-vault`, and `--read-only` support.
+    - Remote preflight execution blocked by two factors: unauthenticated CLI state (`AccessTokenRequiredError`) and direct DB host IPv6 requirement on local IPv4-only network (`DbConfigIpv6Error`).
+    - Actionable blocker: Owner to execute `npx supabase login` interactively in local terminal to authenticate CLI and enable IPv4 connection pooler routing.
+    - Gate C2B (Hosted Database Migration Execution) remains **STRICTLY LOCKED**.
 
 ---
 
 ## 4. Next Actions
 
-1. Submit M02 Gate C1 report (`docs/milestones/M02-database/GATE_C1_LOCAL_IMPLEMENTATION_REPORT.md`) for independent ChatGPT audit.
-2. Await explicit Project Owner authorization before beginning Gate C2 (Cloud PostgreSQL Migration & Production Parity Validation).
-3. Strictly NO remote database modifications, hosted migration pushes, or remote Git pushes until gated authorization is received.
+1. Project Owner to run interactive `npx supabase login` privately in local terminal.
+2. Re-run read-only preflight inspection and dry run to complete Gate C2A.
+3. Submit Gate C2A report (`docs/milestones/M02-database/GATE_C2A_HOSTED_PREFLIGHT_REPORT.md`) for ChatGPT review.
+4. Gate C2B remains **STRICTLY LOCKED** pending explicit Project Owner authorization. Strictly NO hosted migration execution or remote Git pushes.
