@@ -1,18 +1,18 @@
 # Project Memory — Durable State & Architecture Context
 
 > **Last Updated:** 2026-11-18
-> **Current State:** **M03 GATE A (LOCAL-ONLY AUTHENTICATION ARCHITECTURE & SECURITY DESIGN COMPLETE — PASS WITH CONDITIONS) — BRANCH feat/m02-database — AWAITING INDEPENDENT CHATGPT & OWNER GATE A REVIEW**
-> **Active Milestone:** `docs/milestones/M03-authentication/PLAN.md` (Gate A v1.0 Specification)
+> **Current State:** **M03 GATE A.1 (RECONCILED LOCAL-ONLY AUTHENTICATION ARCHITECTURE & SECURITY DESIGN COMPLETE — PASS WITH CONDITIONS) — BRANCH feat/m02-database — AWAITING INDEPENDENT CHATGPT & OWNER GATE B AUTHORIZATION**
+> **Active Milestone:** `docs/milestones/M03-authentication/PLAN.md` (Gate A.1 v1.1 Specification)
 > **M01 Completion Report:** `docs/milestones/M01-foundation/COMPLETION.md` (Accepted & Finalized, Tag `m01-complete` at `699cfd0`)
 > **M02 Completion Report:** `docs/milestones/M02-database/COMPLETION.md` (Pass with Conditions — Infrastructure Accepted, Admin Bootstrap Deferred)
 > **M02 Gate B Report:** `docs/milestones/M02-database/GATE_B_SETUP_REPORT.md` (Completed - Health Check 200 OK Verified)
 > **M02 Gate C1 Report:** `docs/milestones/M02-database/GATE_C1_LOCAL_IMPLEMENTATION_REPORT.md` (Completed - 38/38 Tests Passed)
 > **M02 Gate C2A Report:** `docs/milestones/M02-database/GATE_C2A_HOSTED_PREFLIGHT_REPORT.md` (Completed - PASS WITH CONDITIONS)
 > **M02 Gate C2B Report:** `docs/milestones/M02-database/GATE_C2B_HOSTED_MIGRATION_REPORT.md` (Completed - PASS WITH CONDITIONS)
-> **M03 Plan:** `docs/milestones/M03-authentication/PLAN.md` (v1.0 Gate A Specification)
-> **M03 Architecture:** `docs/milestones/M03-authentication/ARCHITECTURE.md` (Edge Proxy, RPC & Callback Design)
-> **M03 Threat Model:** `docs/milestones/M03-authentication/THREAT_MODEL.md` (20 Threat Scenarios across 6 Boundaries)
-> **M03 Requirements Matrix:** `docs/milestones/M03-authentication/REQUIREMENTS_MATRIX.md` (25 Security Tests & 12 ADRs)
+> **M03 Plan:** `docs/milestones/M03-authentication/PLAN.md` (v1.1 Gate A.1 Reconciled Plan)
+> **M03 Architecture:** `docs/milestones/M03-authentication/ARCHITECTURE.md` (Node.js Proxy, RPC, Non-HttpOnly SSR Cookies & Callback Design)
+> **M03 Threat Model:** `docs/milestones/M03-authentication/THREAT_MODEL.md` (21 Threat Scenarios across 6 Boundaries with Realistic Residual Risks)
+> **M03 Requirements Matrix:** `docs/milestones/M03-authentication/REQUIREMENTS_MATRIX.md` (25 Security Tests & 12 ADRs Reconciled)
 > **M03 Gate A Review:** `docs/milestones/M03-authentication/GATE_A_REVIEW.md` (Completed - PASS WITH CONDITIONS)
 
 ---
@@ -115,25 +115,29 @@
     - M03 Readiness Plan: Created [`docs/milestones/M02-database/M03_READINESS_PLAN.md`](docs/milestones/M02-database/M03_READINESS_PLAN.md) defining preliminary architecture.
     - Milestone M02 Completion Status: All database infrastructure deliverables complete and verified; ADR-009 12-point protocol passed (clean git, deterministic install, lint 0/0, tsc clean, vitest 4/4, build clean, npm audit 0 runtime vulns, 46/46 security tests green locally, zero seed leaks in production). Completion report created: [`docs/milestones/M02-database/COMPLETION.md`](docs/milestones/M02-database/COMPLETION.md). Status: **PASS WITH CONDITIONS (AWAITING CHATGPT COMPLETION REVIEW)**.
   - **M03 (Administrator Identity & Auth Boundaries):**
-    - Gate A (Local-Only Architecture and Security Design): **COMPLETED & DOCUMENTED — STATUS: PASS WITH CONDITIONS** ([`docs/milestones/M03-authentication/GATE_A_REVIEW.md`](docs/milestones/M03-authentication/GATE_A_REVIEW.md)).
+    - Gate A & A.1 (Local-Only Architecture & Security Design Reconciliation): **COMPLETED & RECONCILED — STATUS: PASS WITH CONDITIONS** ([`docs/milestones/M03-authentication/GATE_A_REVIEW.md`](docs/milestones/M03-authentication/GATE_A_REVIEW.md)).
     - M02 database foundation accepted; administrator bootstrap formally deferred to M03.
-    - Gate A architecture work authorized: local-only, documentation-only.
-    - Four architectural corrections resolved:
-      1. Next.js 16 `src/proxy.ts` edge session refresh and cookie propagation specified (proxy explicitly not sole authorization boundary).
-      2. Private administrator authorization resolved via parameterless `public.is_admin()` `SECURITY INVOKER` RPC wrapper (avoids exposing `private` schema or service-role keys).
-      3. Dual-flow auth callback supporting both PKCE `code` and email `token_hash` with open-redirect guards.
-      4. Onboarding deadlock prevented by decoupling `/auth/setup-password` and `/auth/pending-approval` outside `/admin/**`.
-    - Threat model analyzed 20 threat scenarios across 6 trust boundaries ([`THREAT_MODEL.md`](docs/milestones/M03-authentication/THREAT_MODEL.md)).
-    - 25 automated security tests specified (`AUTH-01` to `AUTH-25`) using local disposable GoTrue stack ([`REQUIREMENTS_MATRIX.md`](docs/milestones/M03-authentication/REQUIREMENTS_MATRIX.md)).
+    - Gate A / A.1 architecture work authorized: local-only, documentation-only.
+    - Technical and security reconciliations completed:
+      1. Next.js 16 `src/proxy.ts` reconciled to default Node.js runtime with cookie synchronization across request/response and redirect cookie preservation.
+      2. SSR cookie security model reconciled: `@supabase/ssr` (`0.12.7`) browser cookies are client-readable (`httpOnly: false`) to allow `createBrowserClient` session hydration; strict CSP (`script-src 'self'`) is the primary line of defense against XSS.
+      3. Parameterless `public.is_admin()` `SECURITY INVOKER` RPC wrapper designed; audited M02 schema grants (`USAGE ON SCHEMA private` and `EXECUTE ON FUNCTION private.is_admin() TO authenticated`) confirm zero additional grants on `private` are needed; PostgREST rejects unexpected parameters.
+      4. Callback architecture handles both PKCE `code` and email `token_hash` (`invite`, `recovery`, `signup`, `email`), accounting for hosted default `{{ .ConfirmationURL }}` and local Mailpit testing.
+      5. Simplified onboarding state machine grounded strictly in verifiable facts (valid session + binary whitelist check) with zero invented columns; setting password alone does not grant admin access.
+      6. Security test suite decoupled from M04: `AUTH-06` tests M03 `testAdminAction`; `AUTH-23` asserts PostgREST parameter rejection; `AUTH-25` covers M03 lifecycle.
+      7. Realistic residual risk assessments replace "zero residual risk" claims, distinguishing local sign-out from global sign-out and stateless JWT expiration from live database whitelist revocation.
+    - Threat model covers 21 threat scenarios across 6 trust boundaries ([`THREAT_MODEL.md`](docs/milestones/M03-authentication/THREAT_MODEL.md)).
+    - 25 automated security tests specified (`AUTH-01` to `AUTH-25`) using local disposable GoTrue and Mailpit stack ([`REQUIREMENTS_MATRIX.md`](docs/milestones/M03-authentication/REQUIREMENTS_MATRIX.md)).
     - 12 architectural decisions (DEC-01 to DEC-12) documented.
+    - Gate B is strictly local (`127.0.0.1:54321`) and remains **STRICTLY LOCKED** until explicit Project Owner authorization.
     - Zero application code written, zero packages installed, zero SQL migrations executed, zero production configuration altered.
-    - Gate A awaiting independent ChatGPT and Project Owner review.
 
 ---
 
 ## 4. Next Actions
 
-1. Submit Milestone M03 Gate A documentation artifacts (`PLAN.md`, `ARCHITECTURE.md`, `THREAT_MODEL.md`, `REQUIREMENTS_MATRIX.md`, `GATE_A_REVIEW.md`) for independent ChatGPT and Project Owner architecture audit.
+1. Submit Milestone M03 Gate A.1 reconciled documentation artifacts (`PLAN.md`, `ARCHITECTURE.md`, `THREAT_MODEL.md`, `REQUIREMENTS_MATRIX.md`, `GATE_A_REVIEW.md`) for independent ChatGPT and Project Owner architecture audit.
 2. Await explicit Project Owner authorization for M03 Gate B (Local Database Authorization Migration & Proxy implementation).
-3. Transition branch to `feat/m03-auth` upon Gate B authorization.
-4. Strictly NO unapproved code implementation, production Supabase operations, GitHub remote pushes, or Vercel deployments.
+3. Transition branch to `feat/m03-auth` only upon Gate B authorization.
+4. Keep Gate B strictly local (`127.0.0.1:54321`); zero hosted mutations permitted until Gate D.
+5. Strictly NO unapproved code implementation, production Supabase operations, GitHub remote pushes, or Vercel deployments.
