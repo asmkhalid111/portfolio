@@ -258,7 +258,7 @@ async function main() {
   );
 
   // RPC-05: Anonymous callers cannot execute public.is_admin()
-  const { data: anonData, error: anonErr } = await anonClient.rpc('is_admin');
+  const { error: anonErr } = await anonClient.rpc('is_admin');
   const rpc05Passed = anonErr !== null && (anonErr.code === '42501' || anonErr.message.includes('permission denied') || anonErr.code === 'PGRST301');
   recordTest(
     'RPC-05',
@@ -322,8 +322,8 @@ async function main() {
   );
 
   // RPC-10: Direct queries against private.admin_users remain denied
-  const { data: directAnon, error: directAnonErr } = await anonClient.from('admin_users').select();
-  const { data: directAuth, error: directAuthErr } = await nonAdminClient.from('admin_users').select();
+  const { error: directAnonErr } = await anonClient.from('admin_users').select();
+  const { error: directAuthErr } = await nonAdminClient.from('admin_users').select();
   const rpc10Passed = (directAnonErr?.code === 'PGRST205' || directAnonErr?.code === '42501') &&
                       (directAuthErr?.code === 'PGRST205' || directAuthErr?.code === '42501');
   recordTest(

@@ -1,7 +1,7 @@
 # Project Memory — Durable State & Architecture Context
 
 > **Last Updated:** 2026-11-18
-> **Current State:** **M03 GATE B (LOCAL AUTHORIZATION RPC MIGRATION & NEXT.JS 16 PROXY IMPLEMENTATION COMPLETE — PASS) — BRANCH feat/m03-auth — AWAITING INDEPENDENT CHATGPT & OWNER GATE C AUTHORIZATION**
+> **Current State:** **M03 GATE C (LOCAL AUTHENTICATION ROUTES, SSR INTEGRATION & AUTOMATED SECURITY TESTING COMPLETE — PASS) — BRANCH feat/m03-auth — AWAITING INDEPENDENT CHATGPT & OWNER GATE D AUTHORIZATION**
 > **Active Milestone:** `docs/milestones/M03-authentication/PLAN.md` (Gate A.1 v1.1 Specification)
 > **M01 Completion Report:** `docs/milestones/M01-foundation/COMPLETION.md` (Accepted & Finalized, Tag `m01-complete` at `699cfd0`)
 > **M02 Completion Report:** `docs/milestones/M02-database/COMPLETION.md` (Pass with Conditions — Infrastructure Accepted, Admin Bootstrap Deferred)
@@ -118,26 +118,31 @@
   - **M03 (Administrator Identity & Auth Boundaries):**
     - Gate A & A.1 (Local-Only Architecture & Security Design Reconciliation): **COMPLETED & RECONCILED — STATUS: PASS WITH CONDITIONS** ([`docs/milestones/M03-authentication/GATE_A_REVIEW.md`](docs/milestones/M03-authentication/GATE_A_REVIEW.md)).
     - Gate B (Local Authorization RPC Migration & Next.js 16 Proxy Implementation): **COMPLETED & LOCALLY VERIFIED — STATUS: PASS** ([`docs/milestones/M03-authentication/GATE_B_LOCAL_IMPLEMENTATION_REPORT.md`](docs/milestones/M03-authentication/GATE_B_LOCAL_IMPLEMENTATION_REPORT.md)).
-    - Branch transitioned to `feat/m03-auth` starting from `1aee1f9`.
-    - Migration `supabase/migrations/20261118000001_create_public_is_admin_rpc.sql` created and verified (`0666B18F...`); cleanly applied locally via `npx supabase db reset --no-seed`.
-    - Generated types updated with parameterless `is_admin` RPC (`src/lib/supabase/types.ts`).
-    - Next.js 16 Proxy implemented on default Node.js runtime (`src/proxy.ts` and `src/lib/supabase/proxy.ts`).
-    - SSR cookie synchronization across request/response and redirect cookie preservation implemented.
-    - Refresh-related cache headers (`Cache-Control`, `Expires`, `Pragma`) from `setAll` preserved across responses and redirects.
-    - RPC Security Suite: 15/15 passed green (`scripts/test-local-rpc-security.mjs`).
-    - M02 Regression Suite: 46/46 passed green (`npm run test:supabase:security`).
+    - Gate C (Local Authentication Routes, SSR Integration & Security Testing): **COMPLETED & LOCALLY VERIFIED — STATUS: PASS** ([`docs/milestones/M03-authentication/GATE_C_LOCAL_AUTH_IMPLEMENTATION_REPORT.md`](docs/milestones/M03-authentication/GATE_C_LOCAL_AUTH_IMPLEMENTATION_REPORT.md)).
+    - Branch: `feat/m03-auth` (local only).
+    - Server-side administrator status resolver implemented (`src/lib/auth/admin.ts`).
+    - Protected Server Actions implemented (`src/lib/auth/actions.ts`: `logoutAction`, `testAdminAction`).
+    - Route Group partitioning implemented (`src/app/admin/(dashboard)/layout.tsx` & `page.tsx`, decoupled from `src/app/admin/login/page.tsx`).
+    - SSR callback handler implemented (`src/app/auth/callback/route.ts`) supporting PKCE and OTP `token_hash` with scanner prefetch defense (`purpose === 'prefetch'`).
+    - Scanner-safe confirmation page implemented (`src/app/auth/confirm/page.tsx`).
+    - Auth pages implemented: initial password setup (`/auth/setup-password`), pending approval (`/auth/pending-approval`), password recovery (`/auth/forgot-password`), reset (`/auth/reset-password`), and sanitized errors (`/auth/error`).
+    - Local email templates configured (`supabase/config.toml`, `supabase/templates/invite.html`, `recovery.html`).
+    - M03 Security Suite: 27/27 passed green (`scripts/test-local-m03-auth.mjs`: AUTH-01 through AUTH-25 + SEC-01 and SEC-02).
+    - M02 Database Security Suite: 46/46 passed green (`npm run test:supabase:security`).
+    - Gate B RPC Security Suite: 15/15 passed green (`node scripts/test-local-rpc-security.mjs`).
     - Unit Tests: 20/20 passed green (`npm test`).
-    - E2E Browser Smoke Tests: 12/12 passed green (`npm run test:e2e`).
+    - E2E Browser Smoke Tests: 26/26 passed green (`npm run test:e2e`).
     - TypeScript strict mode and ESLint: clean (0 errors, 0 warnings).
-    - Production build: clean Turbopack compile (`next build`, `ƒ Proxy (Middleware)`).
-    - Strict environment isolation: zero hosted Supabase commands, zero GitHub pushes, zero Vercel deployments.
-    - Gate C remains strictly locked pending Project Owner authorization.
+    - Next.js 16 Production Build: clean Turbopack compile (`next build`).
+    - Dependency Audit: clean (0 runtime vulnerabilities).
+    - Zero hosted operations, zero cloud writes, zero git pushes, zero vercel deployments.
+    - Gate D remains strictly locked pending Project Owner authorization.
 
 ---
 
 ## 4. Next Actions
 
-1. Submit Milestone M03 Gate B implementation report (`docs/milestones/M03-authentication/GATE_B_LOCAL_IMPLEMENTATION_REPORT.md`) for independent ChatGPT and Project Owner review.
-2. Await explicit Project Owner authorization before beginning M03 Gate C (Auth routes, SSR integration, and 25-test security suite).
+1. Submit Milestone M03 Gate C implementation report (`docs/milestones/M03-authentication/GATE_C_LOCAL_AUTH_IMPLEMENTATION_REPORT.md`) for independent ChatGPT and Project Owner review.
+2. Await explicit Project Owner authorization before beginning M03 Gate D (Hosted Supabase deployment, hosted templates, and owner administrator bootstrap).
 3. Keep all work strictly local on `feat/m03-auth`.
 4. Strictly NO unapproved code implementation, production Supabase operations, GitHub remote pushes, or Vercel deployments.

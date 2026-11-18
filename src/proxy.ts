@@ -21,8 +21,9 @@ export const config = {
 /**
  * Sanitizes an incoming redirect path to prevent open-redirect vulnerabilities.
  * Enforces single leading slash, rejects protocol-relative URLs (//) and backslashes (\).
+ * Handles encoded slashes, backslashes, and control character bypasses.
  */
-export function sanitizeNextUrl(rawNext: string | null): string {
+export function sanitizeNextUrl(rawNext: string | null | undefined): string {
   if (!rawNext) return '/admin';
 
   // Reject protocol-relative URLs (//) and backslashes (\) anywhere in path or query
@@ -31,7 +32,17 @@ export function sanitizeNextUrl(rawNext: string | null): string {
   }
 
   // Must be an internal relative path starting with /
-  if (!rawNext.startsWith('/')) {
+  if (!rawNext.startsWith('/') || rawNext.startsWith('/\\')) {
+    return '/admin';
+  }
+
+  // Catch URL-encoded slashes, backslashes, and control characters (e.g. %2f, %5c, %09)
+  try {
+    const decoded = decodeURIComponent(rawNext);
+    if (decoded.includes('//') || decoded.includes('\\') || /^\/[\s\x00-\x1f]/.test(decoded)) {
+      return '/admin';
+    }
+  } catch {
     return '/admin';
   }
 

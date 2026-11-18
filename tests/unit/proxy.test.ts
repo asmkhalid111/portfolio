@@ -5,6 +5,9 @@ import * as proxyLib from '@/lib/supabase/proxy';
 
 describe('Next.js 16 Proxy Architecture & Boundaries (src/proxy.ts)', () => {
   const originalEnv = process.env;
+  const mockClient = {} as unknown as proxyLib.ProxySessionResult['supabase'];
+  const mockUserFixture = (id: string, email: string) =>
+    ({ id, email }) as unknown as proxyLib.ProxySessionResult['user'];
 
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -70,7 +73,7 @@ describe('Next.js 16 Proxy Architecture & Boundaries (src/proxy.ts)', () => {
   describe('Route Boundaries & Redirect Behavior', () => {
     it('redirects unauthenticated visitor requesting /admin to /admin/login?next=%2Fadmin', async () => {
       vi.spyOn(proxyLib, 'createProxySession').mockResolvedValue({
-        supabase: {} as any,
+        supabase: mockClient,
         response: NextResponse.next(),
         user: null,
         authHeaders: {},
@@ -87,7 +90,7 @@ describe('Next.js 16 Proxy Architecture & Boundaries (src/proxy.ts)', () => {
 
     it('redirects unauthenticated visitor requesting nested /admin/media to login with encoded next path', async () => {
       vi.spyOn(proxyLib, 'createProxySession').mockResolvedValue({
-        supabase: {} as any,
+        supabase: mockClient,
         response: NextResponse.next(),
         user: null,
         authHeaders: {},
@@ -103,7 +106,7 @@ describe('Next.js 16 Proxy Architecture & Boundaries (src/proxy.ts)', () => {
 
     it('sanitizes malicious open-redirect parameter during unauthenticated redirect', async () => {
       vi.spyOn(proxyLib, 'createProxySession').mockResolvedValue({
-        supabase: {} as any,
+        supabase: mockClient,
         response: NextResponse.next(),
         user: null,
         authHeaders: {},
@@ -120,7 +123,7 @@ describe('Next.js 16 Proxy Architecture & Boundaries (src/proxy.ts)', () => {
 
     it('permits unauthenticated access to /admin/login without redirect loop', async () => {
       vi.spyOn(proxyLib, 'createProxySession').mockResolvedValue({
-        supabase: {} as any,
+        supabase: mockClient,
         response: NextResponse.next(),
         user: null,
         authHeaders: {},
@@ -137,7 +140,7 @@ describe('Next.js 16 Proxy Architecture & Boundaries (src/proxy.ts)', () => {
 
     it('permits inbound email callbacks on /auth/callback without blocking', async () => {
       vi.spyOn(proxyLib, 'createProxySession').mockResolvedValue({
-        supabase: {} as any,
+        supabase: mockClient,
         response: NextResponse.next(),
         user: null,
         authHeaders: {},
@@ -154,9 +157,9 @@ describe('Next.js 16 Proxy Architecture & Boundaries (src/proxy.ts)', () => {
     it('permits onboarding access to /auth/setup-password without admin whitelist check in proxy', async () => {
       // User is authenticated but proxy does not check admin whitelist
       vi.spyOn(proxyLib, 'createProxySession').mockResolvedValue({
-        supabase: {} as any,
+        supabase: mockClient,
         response: NextResponse.next(),
-        user: { id: 'invitee-uuid', email: 'invitee@example.com' } as any,
+        user: mockUserFixture('invitee-uuid', 'invitee@example.com'),
         authHeaders: {},
       });
 
@@ -169,9 +172,9 @@ describe('Next.js 16 Proxy Architecture & Boundaries (src/proxy.ts)', () => {
 
     it('permits authenticated requests to /admin to pass through to Server Component layout', async () => {
       vi.spyOn(proxyLib, 'createProxySession').mockResolvedValue({
-        supabase: {} as any,
+        supabase: mockClient,
         response: NextResponse.next(),
-        user: { id: 'admin-uuid', email: 'admin@example.com' } as any,
+        user: mockUserFixture('admin-uuid', 'admin@example.com'),
         authHeaders: {},
       });
 
@@ -185,7 +188,7 @@ describe('Next.js 16 Proxy Architecture & Boundaries (src/proxy.ts)', () => {
 
     it('permits public homepage / requests to pass through untouched', async () => {
       vi.spyOn(proxyLib, 'createProxySession').mockResolvedValue({
-        supabase: {} as any,
+        supabase: mockClient,
         response: NextResponse.next(),
         user: null,
         authHeaders: {},
@@ -220,7 +223,7 @@ describe('Next.js 16 Proxy Architecture & Boundaries (src/proxy.ts)', () => {
       };
 
       vi.spyOn(proxyLib, 'createProxySession').mockResolvedValue({
-        supabase: {} as any,
+        supabase: mockClient,
         response: baseResponse,
         user: null,
         authHeaders,
