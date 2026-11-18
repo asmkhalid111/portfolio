@@ -1,7 +1,7 @@
 # Project Memory — Durable State & Architecture Context
 
 > **Last Updated:** 2026-11-18
-> **Current State:** **M03 GATE A.1 (RECONCILED LOCAL-ONLY AUTHENTICATION ARCHITECTURE & SECURITY DESIGN COMPLETE — PASS WITH CONDITIONS) — BRANCH feat/m02-database — AWAITING INDEPENDENT CHATGPT & OWNER GATE B AUTHORIZATION**
+> **Current State:** **M03 GATE B (LOCAL AUTHORIZATION RPC MIGRATION & NEXT.JS 16 PROXY IMPLEMENTATION COMPLETE — PASS) — BRANCH feat/m03-auth — AWAITING INDEPENDENT CHATGPT & OWNER GATE C AUTHORIZATION**
 > **Active Milestone:** `docs/milestones/M03-authentication/PLAN.md` (Gate A.1 v1.1 Specification)
 > **M01 Completion Report:** `docs/milestones/M01-foundation/COMPLETION.md` (Accepted & Finalized, Tag `m01-complete` at `699cfd0`)
 > **M02 Completion Report:** `docs/milestones/M02-database/COMPLETION.md` (Pass with Conditions — Infrastructure Accepted, Admin Bootstrap Deferred)
@@ -14,6 +14,7 @@
 > **M03 Threat Model:** `docs/milestones/M03-authentication/THREAT_MODEL.md` (21 Threat Scenarios across 6 Boundaries with Realistic Residual Risks)
 > **M03 Requirements Matrix:** `docs/milestones/M03-authentication/REQUIREMENTS_MATRIX.md` (25 Security Tests & 12 ADRs Reconciled)
 > **M03 Gate A Review:** `docs/milestones/M03-authentication/GATE_A_REVIEW.md` (Completed - PASS WITH CONDITIONS)
+> **M03 Gate B Report:** `docs/milestones/M03-authentication/GATE_B_LOCAL_IMPLEMENTATION_REPORT.md` (Completed - PASS)
 
 ---
 
@@ -116,28 +117,27 @@
     - Milestone M02 Completion Status: All database infrastructure deliverables complete and verified; ADR-009 12-point protocol passed (clean git, deterministic install, lint 0/0, tsc clean, vitest 4/4, build clean, npm audit 0 runtime vulns, 46/46 security tests green locally, zero seed leaks in production). Completion report created: [`docs/milestones/M02-database/COMPLETION.md`](docs/milestones/M02-database/COMPLETION.md). Status: **PASS WITH CONDITIONS (AWAITING CHATGPT COMPLETION REVIEW)**.
   - **M03 (Administrator Identity & Auth Boundaries):**
     - Gate A & A.1 (Local-Only Architecture & Security Design Reconciliation): **COMPLETED & RECONCILED — STATUS: PASS WITH CONDITIONS** ([`docs/milestones/M03-authentication/GATE_A_REVIEW.md`](docs/milestones/M03-authentication/GATE_A_REVIEW.md)).
-    - M02 database foundation accepted; administrator bootstrap formally deferred to M03.
-    - Gate A / A.1 architecture work authorized: local-only, documentation-only.
-    - Technical and security reconciliations completed:
-      1. Next.js 16 `src/proxy.ts` reconciled to default Node.js runtime with cookie synchronization across request/response and redirect cookie preservation.
-      2. SSR cookie security model reconciled: `@supabase/ssr` (`0.12.7`) browser cookies are client-readable (`httpOnly: false`) to allow `createBrowserClient` session hydration; strict CSP (`script-src 'self'`) is the primary line of defense against XSS.
-      3. Parameterless `public.is_admin()` `SECURITY INVOKER` RPC wrapper designed; audited M02 schema grants (`USAGE ON SCHEMA private` and `EXECUTE ON FUNCTION private.is_admin() TO authenticated`) confirm zero additional grants on `private` are needed; PostgREST rejects unexpected parameters.
-      4. Callback architecture handles both PKCE `code` and email `token_hash` (`invite`, `recovery`, `signup`, `email`), accounting for hosted default `{{ .ConfirmationURL }}` and local Mailpit testing.
-      5. Simplified onboarding state machine grounded strictly in verifiable facts (valid session + binary whitelist check) with zero invented columns; setting password alone does not grant admin access.
-      6. Security test suite decoupled from M04: `AUTH-06` tests M03 `testAdminAction`; `AUTH-23` asserts PostgREST parameter rejection; `AUTH-25` covers M03 lifecycle.
-      7. Realistic residual risk assessments replace "zero residual risk" claims, distinguishing local sign-out from global sign-out and stateless JWT expiration from live database whitelist revocation.
-    - Threat model covers 21 threat scenarios across 6 trust boundaries ([`THREAT_MODEL.md`](docs/milestones/M03-authentication/THREAT_MODEL.md)).
-    - 25 automated security tests specified (`AUTH-01` to `AUTH-25`) using local disposable GoTrue and Mailpit stack ([`REQUIREMENTS_MATRIX.md`](docs/milestones/M03-authentication/REQUIREMENTS_MATRIX.md)).
-    - 12 architectural decisions (DEC-01 to DEC-12) documented.
-    - Gate B is strictly local (`127.0.0.1:54321`) and remains **STRICTLY LOCKED** until explicit Project Owner authorization.
-    - Zero application code written, zero packages installed, zero SQL migrations executed, zero production configuration altered.
+    - Gate B (Local Authorization RPC Migration & Next.js 16 Proxy Implementation): **COMPLETED & LOCALLY VERIFIED — STATUS: PASS** ([`docs/milestones/M03-authentication/GATE_B_LOCAL_IMPLEMENTATION_REPORT.md`](docs/milestones/M03-authentication/GATE_B_LOCAL_IMPLEMENTATION_REPORT.md)).
+    - Branch transitioned to `feat/m03-auth` starting from `1aee1f9`.
+    - Migration `supabase/migrations/20261118000001_create_public_is_admin_rpc.sql` created and verified (`0666B18F...`); cleanly applied locally via `npx supabase db reset --no-seed`.
+    - Generated types updated with parameterless `is_admin` RPC (`src/lib/supabase/types.ts`).
+    - Next.js 16 Proxy implemented on default Node.js runtime (`src/proxy.ts` and `src/lib/supabase/proxy.ts`).
+    - SSR cookie synchronization across request/response and redirect cookie preservation implemented.
+    - Refresh-related cache headers (`Cache-Control`, `Expires`, `Pragma`) from `setAll` preserved across responses and redirects.
+    - RPC Security Suite: 15/15 passed green (`scripts/test-local-rpc-security.mjs`).
+    - M02 Regression Suite: 46/46 passed green (`npm run test:supabase:security`).
+    - Unit Tests: 20/20 passed green (`npm test`).
+    - E2E Browser Smoke Tests: 12/12 passed green (`npm run test:e2e`).
+    - TypeScript strict mode and ESLint: clean (0 errors, 0 warnings).
+    - Production build: clean Turbopack compile (`next build`, `ƒ Proxy (Middleware)`).
+    - Strict environment isolation: zero hosted Supabase commands, zero GitHub pushes, zero Vercel deployments.
+    - Gate C remains strictly locked pending Project Owner authorization.
 
 ---
 
 ## 4. Next Actions
 
-1. Submit Milestone M03 Gate A.1 reconciled documentation artifacts (`PLAN.md`, `ARCHITECTURE.md`, `THREAT_MODEL.md`, `REQUIREMENTS_MATRIX.md`, `GATE_A_REVIEW.md`) for independent ChatGPT and Project Owner architecture audit.
-2. Await explicit Project Owner authorization for M03 Gate B (Local Database Authorization Migration & Proxy implementation).
-3. Transition branch to `feat/m03-auth` only upon Gate B authorization.
-4. Keep Gate B strictly local (`127.0.0.1:54321`); zero hosted mutations permitted until Gate D.
-5. Strictly NO unapproved code implementation, production Supabase operations, GitHub remote pushes, or Vercel deployments.
+1. Submit Milestone M03 Gate B implementation report (`docs/milestones/M03-authentication/GATE_B_LOCAL_IMPLEMENTATION_REPORT.md`) for independent ChatGPT and Project Owner review.
+2. Await explicit Project Owner authorization before beginning M03 Gate C (Auth routes, SSR integration, and 25-test security suite).
+3. Keep all work strictly local on `feat/m03-auth`.
+4. Strictly NO unapproved code implementation, production Supabase operations, GitHub remote pushes, or Vercel deployments.
