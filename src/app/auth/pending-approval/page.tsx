@@ -1,5 +1,6 @@
 import { getAdminAuthStatus } from '@/lib/auth/admin';
 import { redirect } from 'next/navigation';
+import { connection } from 'next/server';
 import Link from 'next/link';
 import { logoutAction } from '@/lib/auth/actions';
 import { Clock, ShieldAlert, ArrowRight, LogOut, CheckCircle } from 'lucide-react';
@@ -7,6 +8,7 @@ import { Clock, ShieldAlert, ArrowRight, LogOut, CheckCircle } from 'lucide-reac
 export const instant = false;
 
 export default async function PendingApprovalPage() {
+  await connection();
   const authStatus = await getAdminAuthStatus();
 
   // If unauthenticated, redirect to login

@@ -3,6 +3,10 @@
 ## Mission
 Build a distinctive, accessible, fast, maintainable, securely-administered personal portfolio. Prioritize the instructor's verifiable CRUD requirement and early free hosting. Follow the approved milestone plan; never silently expand scope.
 
+## Active Project Scope (MVP)
+All development agents must consult [MVP_SCOPE.md](./MVP_SCOPE.md) first for the active roadmap. The project is focused on a 3-day, teacher-ready MVP consisting of four sequential milestones: R1 (Administrator Authentication), R2 (Projects CRUD), R3 (Public Portfolio), and R4 (Vercel Deployment & Teacher Demonstration). Historical roadmap and extended audit documents remain historical references, not active development obligations.
+
+
 ## Decision authority
 - Owner: content owner, account/credential owner, final approval and deployment authorization.
 - ChatGPT: architecture/design reviewer; reviews plans and completion evidence; proposes revised prompts.
@@ -36,3 +40,13 @@ Build a distinctive, accessible, fast, maintainable, securely-administered perso
 
 ## First instruction
 If no milestone plan is marked approved, do not implement app code. Read `prompts/M00_PLAN_ONLY.md` and draft its requested plan.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

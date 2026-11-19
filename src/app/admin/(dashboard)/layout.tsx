@@ -1,5 +1,7 @@
 import { getAdminAuthStatus } from '@/lib/auth/admin';
 import { redirect } from 'next/navigation';
+import { connection } from 'next/server';
+import Link from 'next/link';
 import { logoutAction } from '@/lib/auth/actions';
 import { ShieldCheck, LogOut } from 'lucide-react';
 
@@ -10,6 +12,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  await connection();
   const authStatus = await getAdminAuthStatus();
 
   // Tier 2 & Tier 3 Enforcement in Server Component Layout:
@@ -29,14 +32,31 @@ export default async function AdminLayout({
     <div className="min-h-screen bg-gray-50/50 dark:bg-gray-950">
       <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2.5">
-            <ShieldCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-            <span className="text-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">
-              Portfolio Admin Panel
-            </span>
-            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-              Whitelisted
-            </span>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2.5">
+              <ShieldCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+              <span className="text-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">
+                Portfolio Admin Panel
+              </span>
+              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                Whitelisted
+              </span>
+            </div>
+
+            <nav className="flex items-center gap-4 text-xs font-medium" aria-label="Admin Navigation">
+              <Link
+                href="/admin"
+                className="text-gray-600 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              >
+                Overview
+              </Link>
+              <Link
+                href="/admin/projects"
+                className="text-gray-600 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              >
+                Projects
+              </Link>
+            </nav>
           </div>
 
           <div className="flex items-center gap-4">

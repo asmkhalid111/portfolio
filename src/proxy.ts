@@ -50,6 +50,16 @@ export function sanitizeNextUrl(rawNext: string | null | undefined): string {
 }
 
 /**
+ * Applies baseline security headers (clickjacking defense, MIME sniffing, referrer policy)
+ * to all proxy responses and redirects.
+ */
+function applySecurityHeaders(res: NextResponse): void {
+  res.headers.set('X-Frame-Options', 'DENY');
+  res.headers.set('X-Content-Type-Options', 'nosniff');
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+}
+
+/**
  * Creates an HTTP redirect response while strictly preserving refreshed session cookies
  * and Supabase SSR cache headers.
  */
@@ -75,6 +85,8 @@ function createRedirectResponse(
     'Cache-Control',
     'private, no-cache, no-store, must-revalidate, max-age=0'
   );
+
+  applySecurityHeaders(redirectResponse);
 
   return redirectResponse;
 }
@@ -135,5 +147,6 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   }
 
   // 5. Public Landing & Unprotected Routes (e.g. /)
+  applySecurityHeaders(response);
   return response;
 }
