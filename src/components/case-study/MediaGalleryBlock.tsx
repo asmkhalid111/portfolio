@@ -44,7 +44,7 @@ export function MediaGalleryBlock({ media, title = 'Application Artifacts' }: Me
   return (
     <section
       aria-labelledby="gallery-heading"
-      className="space-y-4 my-8"
+      className="space-y-4"
       onKeyDown={handleKeyDown}
       tabIndex={0}
       role="region"
