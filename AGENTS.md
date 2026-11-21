@@ -41,6 +41,43 @@ All development agents must consult [MVP_SCOPE.md](./MVP_SCOPE.md) first for the
 ## First instruction
 If no milestone plan is marked approved, do not implement app code. Read `prompts/M00_PLAN_ONLY.md` and draft its requested plan.
 
+## Project Artifact Storage Policy
+
+All generated portfolio development artifacts must be written inside the project directory under `E:\Codes\Portfolio\.local\`.
+
+Required locations:
+
+- `.local/visual-audits/<task-id>/`
+  Screenshots, recordings, browser evidence, DOM metrics, and visual comparisons.
+
+- `.local/reports/`
+  Task plans, completion reports, and audit documentation.
+
+- `.local/tmp/`
+  Temporary scripts, test outputs, and disposable development artifacts.
+
+Rules:
+
+1. Do not use the Antigravity brain directory on C: as the authoritative destination for project-generated screenshots or reports.
+
+2. Explicitly configure Playwright screenshot, video, and trace output paths under the appropriate E: project directory.
+
+3. Keep `.local/` excluded from Git using `.git/info/exclude`.
+
+4. Never place temporary audit artifacts in `src/`, `public/`, or production asset directories.
+
+5. Never delete existing artifacts automatically. After verifying their E: copies, C: originals may be removed only with explicit user approval.
+
+6. Every task completion report must include the actual E: output paths.
+
+7. Do not modify the tracked `.gitignore` without approval.
+
+8. Do not duplicate large generated artifacts into the C: workspace when output destinations are configurable.
+
+9. Preserve existing project files, local environment configuration, and all Git checkpoints.
+
+10. Treat these rules as applicable to all future portfolio development tasks.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 ## This is NOT the Next.js you know

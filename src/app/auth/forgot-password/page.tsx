@@ -25,9 +25,9 @@ export default function ForgotPasswordPage() {
         const supabase = createClient();
         const origin = window.location.origin;
 
-        // Dispatches recovery email pointing to /auth/confirm with type=recovery
+        // Dispatches recovery email pointing directly to /auth/reset-password
         await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${origin}/auth/confirm?type=recovery`,
+          redirectTo: `${origin}/auth/reset-password`,
         });
 
         // Always display generic success confirmation (prevention of account enumeration)

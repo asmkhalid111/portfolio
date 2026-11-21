@@ -5,13 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { sanitizeNextUrl } from '@/proxy';
-import { Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
+import { Lock, Mail, AlertCircle, ArrowRight, CheckCircle } from 'lucide-react';
 
 function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const rawNext = searchParams.get('next');
   const targetNext = sanitizeNextUrl(rawNext);
+  const messageParam = searchParams.get('message');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -76,6 +77,16 @@ function AdminLoginForm() {
             Sign in to access portfolio administration and system controls.
           </p>
         </div>
+
+        {messageParam === 'password_updated' && (
+          <div
+            role="status"
+            className="mb-6 flex items-start gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
+          >
+            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+            <span>Password updated successfully. Please sign in with your new password.</span>
+          </div>
+        )}
 
         {errorMessage && (
           <div
