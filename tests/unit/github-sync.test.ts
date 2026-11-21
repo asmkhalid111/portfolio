@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   parseGitHubRepo,
   extractMarkdownChapters,
+  resolveRepoRelativePath,
   rewriteMarkdownRelativeUrls,
   extractMarkdownImages,
   isBadgeUrl,
@@ -141,6 +142,151 @@ Test suite specifications.
         { id: 'automated-verification-sqa', title: 'Automated Verification (SQA)', level: 2 },
       ]);
     });
+
+    it('disambiguates duplicate headings with sequential numeric suffixes', () => {
+      const markdown = `
+## Installation
+Prerequisites.
+
+## Installation
+Steps.
+
+## Installation
+Verification.
+`;
+      const chapters = extractMarkdownChapters(markdown);
+      expect(chapters).toEqual([
+        { id: 'installation', title: 'Installation', level: 2 },
+        { id: 'installation-1', title: 'Installation', level: 2 },
+        { id: 'installation-2', title: 'Installation', level: 2 },
+      ]);
+    });
+
+    it('preserves Bengali and Unicode script characters in chapter IDs and titles', () => {
+      const markdown = `
+## বর্ণমালা টাইপিং নির্দেশিকা
+### লেআউট ১ (জাতীয়)
+## বিজয়ের রূপরেখা
+`;
+      const chapters = extractMarkdownChapters(markdown);
+      expect(chapters).toEqual([
+        { id: 'বর্ণমালা-টাইপিং-নির্দেশিকা', title: 'বর্ণমালা টাইপিং নির্দেশিকা', level: 2 },
+        { id: 'লেআউট-১-জাতীয়', title: 'লেআউট ১ (জাতীয়)', level: 3 },
+        { id: 'বিজয়ের-রূপরেখা', title: 'বিজয়ের রূপরেখা', level: 2 },
+      ]);
+    });
+
+    it('ignores headings inside code blocks and comments', () => {
+      const markdown = `
+\`\`\`markdown
+## Fake Code Block Heading
+\`\`\`
+
+## Genuine Chapter
+Real chapter content.
+`;
+      const chapters = extractMarkdownChapters(markdown);
+      expect(chapters).toEqual([
+        { id: 'genuine-chapter', title: 'Genuine Chapter', level: 2 },
+      ]);
+    });
+  });
+
+  describe('resolveRepoRelativePath', () => {
+    it('resolves relative path against default root README.md', () => {
+      expect(resolveRepoRelativePath('images/demo.png', 'README.md')).toEqual({
+        type: 'resolved',
+        path: 'images/demo.png',
+      });
+      expect(resolveRepoRelativePath('./images/demo.png')).toEqual({
+        type: 'resolved',
+        path: 'images/demo.png',
+      });
+    });
+
+    it('resolves relative path against nested document directory', () => {
+      expect(resolveRepoRelativePath('./images/demo.png', 'docs/guide.md')).toEqual({
+        type: 'resolved',
+        path: 'docs/images/demo.png',
+      });
+    });
+
+    it('resolves relative path against deeply nested document directory', () => {
+      expect(resolveRepoRelativePath('img/flow.png', 'nested/deep/guide.md')).toEqual({
+        type: 'resolved',
+        path: 'nested/deep/img/flow.png',
+      });
+    });
+
+    it('resolves valid parent traversal (..) within repository boundaries', () => {
+      expect(
+        resolveRepoRelativePath('../assets/a.png', 'docs/architecture/spec.md')
+      ).toEqual({
+        type: 'resolved',
+        path: 'docs/assets/a.png',
+      });
+
+      expect(
+        resolveRepoRelativePath('../../root.png', 'docs/architecture/spec.md')
+      ).toEqual({
+        type: 'resolved',
+        path: 'root.png',
+      });
+    });
+
+    it('rejects and flags paths that escape the repository root', () => {
+      expect(resolveRepoRelativePath('../secret.png', 'README.md')).toEqual({
+        type: 'escaped',
+        path: '../secret.png',
+      });
+
+      expect(
+        resolveRepoRelativePath('../../../secret.png', 'docs/architecture/spec.md')
+      ).toEqual({
+        type: 'escaped',
+        path: '../../../secret.png',
+      });
+    });
+
+    it('identifies and preserves in-page anchor fragments', () => {
+      expect(resolveRepoRelativePath('#architecture', 'docs/guide.md')).toEqual({
+        type: 'anchor',
+        path: '#architecture',
+      });
+    });
+
+    it('identifies and preserves absolute HTTPS and HTTP URLs', () => {
+      expect(
+        resolveRepoRelativePath('https://example.com/demo.png', 'docs/guide.md')
+      ).toEqual({
+        type: 'absolute',
+        path: 'https://example.com/demo.png',
+      });
+
+      expect(
+        resolveRepoRelativePath('http://example.com/demo.png', 'docs/guide.md')
+      ).toEqual({
+        type: 'absolute',
+        path: 'http://example.com/demo.png',
+      });
+    });
+
+    it('identifies and rejects unsafe schemes', () => {
+      expect(resolveRepoRelativePath('javascript:alert(1)', 'docs/guide.md')).toEqual({
+        type: 'unsafe',
+        path: 'javascript:alert(1)',
+      });
+
+      expect(resolveRepoRelativePath('data:image/png;base64,abc', 'docs/guide.md')).toEqual({
+        type: 'unsafe',
+        path: 'data:image/png;base64,abc',
+      });
+
+      expect(resolveRepoRelativePath('file:///etc/passwd', 'docs/guide.md')).toEqual({
+        type: 'unsafe',
+        path: 'file:///etc/passwd',
+      });
+    });
   });
 
   describe('rewriteMarkdownRelativeUrls', () => {
@@ -179,6 +325,170 @@ Test suite specifications.
         'master'
       );
       expect(rewritten).toBe(markdown);
+    });
+
+    it('rewrites nested markdown relative image paths correctly using docPath', () => {
+      const markdown = '![Architecture Guide](./images/demo.png)';
+      const rewritten = rewriteMarkdownRelativeUrls(
+        markdown,
+        'asmkhalid111',
+        'BornoMala',
+        'main',
+        'docs/guide.md'
+      );
+      expect(rewritten).toBe(
+        '![Architecture Guide](https://raw.githubusercontent.com/asmkhalid111/BornoMala/main/docs/images/demo.png)'
+      );
+    });
+
+    it('rewrites deeply nested markdown image paths correctly', () => {
+      const markdown = '![Pipeline Flow](img/flow.png)';
+      const rewritten = rewriteMarkdownRelativeUrls(
+        markdown,
+        'asmkhalid111',
+        'BornoMala',
+        'main',
+        'nested/deep/guide.md'
+      );
+      expect(rewritten).toBe(
+        '![Pipeline Flow](https://raw.githubusercontent.com/asmkhalid111/BornoMala/main/nested/deep/img/flow.png)'
+      );
+    });
+
+    it('rewrites valid parent traversal (..) within repository boundaries for nested docs', () => {
+      const markdown = '![Shared Asset](../assets/a.png) and ![Root Asset](../../root.png)';
+      const rewritten = rewriteMarkdownRelativeUrls(
+        markdown,
+        'asmkhalid111',
+        'BornoMala',
+        'main',
+        'docs/architecture/spec.md'
+      );
+      expect(rewritten).toBe(
+        '![Shared Asset](https://raw.githubusercontent.com/asmkhalid111/BornoMala/main/docs/assets/a.png) and ![Root Asset](https://raw.githubusercontent.com/asmkhalid111/BornoMala/main/root.png)'
+      );
+    });
+
+    it('rejects and preserves root-escaping paths without prefixing raw GitHub base', () => {
+      const markdown = '![Escape Attempt](../../secret.png)';
+      const rewritten = rewriteMarkdownRelativeUrls(
+        markdown,
+        'asmkhalid111',
+        'BornoMala',
+        'main',
+        'docs/spec.md'
+      );
+      // Because docs/spec.md is only 1 directory deep, ../../ escapes the repository root
+      expect(rewritten).toBe('![Escape Attempt](../../secret.png)');
+      expect(rewritten).not.toContain('raw.githubusercontent.com');
+    });
+
+    it('rewrites relative hyperlinks to github.com blob URLs according to docPath', () => {
+      const markdown = 'Check [Related Specification](./spec2.md) and [Parent Guide](../intro.md)';
+      const rewritten = rewriteMarkdownRelativeUrls(
+        markdown,
+        'asmkhalid111',
+        'BornoMala',
+        'main',
+        'docs/architecture/spec.md'
+      );
+      expect(rewritten).toBe(
+        'Check [Related Specification](https://github.com/asmkhalid111/BornoMala/blob/main/docs/architecture/spec2.md) and [Parent Guide](https://github.com/asmkhalid111/BornoMala/blob/main/docs/intro.md)'
+      );
+    });
+
+    it('preserves in-page fragment-only anchor links untouched', () => {
+      const markdown = 'Jump to [Architecture](#architecture-overview) or [Top](#top)';
+      const rewritten = rewriteMarkdownRelativeUrls(
+        markdown,
+        'asmkhalid111',
+        'BornoMala',
+        'main',
+        'docs/guide.md'
+      );
+      expect(rewritten).toBe('Jump to [Architecture](#architecture-overview) or [Top](#top)');
+    });
+
+    it('leaves absolute external hyperlinks and images untouched', () => {
+      const markdown = 'Visit [Official Site](https://example.com) or read [RFC](https://tools.ietf.org/html/rfc1234)';
+      const rewritten = rewriteMarkdownRelativeUrls(
+        markdown,
+        'asmkhalid111',
+        'BornoMala',
+        'main',
+        'docs/guide.md'
+      );
+      expect(rewritten).toBe(markdown);
+    });
+
+    it('does not rewrite unsafe URL schemes in images or links', () => {
+      const markdown = '![Unsafe](javascript:alert(1)) and [Bad Link](file:///etc/passwd)';
+      const rewritten = rewriteMarkdownRelativeUrls(
+        markdown,
+        'asmkhalid111',
+        'BornoMala',
+        'main',
+        'docs/guide.md'
+      );
+      expect(rewritten).toBe(markdown);
+      expect(rewritten).not.toContain('raw.githubusercontent.com');
+      expect(rewritten).not.toContain('github.com/asmkhalid111/BornoMala/blob');
+    });
+
+    it('rewrites HTML img tags relative to nested docPath', () => {
+      const markdown = '<img src="./assets/diag.png" alt="Architecture Diagram" />';
+      const rewritten = rewriteMarkdownRelativeUrls(
+        markdown,
+        'asmkhalid111',
+        'BornoMala',
+        'main',
+        'docs/architecture/spec.md'
+      );
+      expect(rewritten).toBe(
+        '<img src="https://raw.githubusercontent.com/asmkhalid111/BornoMala/main/docs/architecture/assets/diag.png" alt="Architecture Diagram" />'
+      );
+    });
+
+    it('does NOT transform Markdown images or links inside fenced code blocks or inline code spans', () => {
+      const markdown = [
+        '# Documentation with Code Examples',
+        '',
+        'Authentic image outside code:',
+        '![Real Image](./real.png)',
+        '',
+        'Fenced code example:',
+        '```markdown',
+        '![Code Image](./code-demo.png)',
+        '[Code Link](./code-doc.md)',
+        '<img src="./code-html.png" />',
+        '```',
+        '',
+        'Inline code example: `![Inline Image](./inline.png)` and `[Inline Link](./inline.md)`',
+        '',
+        'Another authentic link outside code:',
+        '[Real Doc](./guide.md)',
+      ].join('\n');
+
+      const rewritten = rewriteMarkdownRelativeUrls(
+        markdown,
+        'asmkhalid111',
+        'BornoMala',
+        'main',
+        'docs/spec.md'
+      );
+
+      // Outside code: transformed
+      expect(rewritten).toContain('![Real Image](https://raw.githubusercontent.com/asmkhalid111/BornoMala/main/docs/real.png)');
+      expect(rewritten).toContain('[Real Doc](https://github.com/asmkhalid111/BornoMala/blob/main/docs/guide.md)');
+
+      // Inside fenced code: NOT transformed
+      expect(rewritten).toContain('![Code Image](./code-demo.png)');
+      expect(rewritten).toContain('[Code Link](./code-doc.md)');
+      expect(rewritten).toContain('<img src="./code-html.png" />');
+
+      // Inside inline code: NOT transformed
+      expect(rewritten).toContain('`![Inline Image](./inline.png)`');
+      expect(rewritten).toContain('`[Inline Link](./inline.md)`');
     });
   });
 

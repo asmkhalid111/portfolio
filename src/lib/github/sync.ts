@@ -1,6 +1,12 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import { visit } from 'unist-util-visit';
+import {
+  HeadingSlugger,
+  getNodeText,
+  RESERVED_PAGE_ANCHORS,
+  slugify,
+} from '@/lib/case-studies/slugger';
 
 /**
  * Server-Side GitHub Documentation Resolver & Safe Content Synchronizer
@@ -148,68 +154,212 @@ export function parseGitHubRepo(url: string | null | undefined): { owner: string
   return { owner, repo };
 }
 
+const markdownProcessor = unified().use(remarkParse);
+
 /**
  * Generates URL-friendly anchor slug from heading text.
  */
-function slugifyHeading(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+export function slugifyHeading(text: string): string {
+  return slugify(text);
 }
 
 /**
- * Extracts table of contents chapters from markdown headings (H2 and H3).
+ * Extracts table of contents chapters from markdown headings (H2 and H3)
+ * using unified/remark AST parsing. Fenced code blocks are excluded,
+ * and heading IDs are assigned in exact document order with duplicate suffixes.
  */
 export function extractMarkdownChapters(markdown: string): GitHubChapter[] {
-  const chapters: GitHubChapter[] = [];
-  const headingRegex = /^(#{2,3})\s+(.+)$/gm;
-  let match: RegExpExecArray | null;
+  if (!markdown || typeof markdown !== 'string') return [];
 
-  while ((match = headingRegex.exec(markdown)) !== null) {
-    const level = match[1].length;
-    // Strip markdown links or formatting from heading text
-    const rawTitle = match[2].trim().replace(/\[(.*?)\]\(.*?\)/g, '$1').replace(/[*_`]/g, '');
-    const id = slugifyHeading(rawTitle);
-    if (id && rawTitle) {
-      chapters.push({ id, title: rawTitle, level });
-    }
+  const chapters: GitHubChapter[] = [];
+  const slugger = new HeadingSlugger(RESERVED_PAGE_ANCHORS);
+
+  try {
+    const tree = markdownProcessor.parse(markdown);
+
+    visit(tree, 'heading', (node: { depth: number; children: unknown[] }) => {
+      const text = getNodeText(node);
+      const title = text.trim() || 'Untitled Section';
+
+      // Register every participating heading level (H1-H6) with the slugger in document order
+      // to guarantee exact ID count alignment with DOM rendering.
+      const id = slugger.slug(text);
+
+      // Include only H2 and H3 in the chapter index
+      if (node.depth === 2 || node.depth === 3) {
+        chapters.push({
+          id,
+          title,
+          level: node.depth,
+        });
+      }
+    });
+  } catch (err) {
+    console.warn('[GitHubSync] Failed to parse markdown AST for chapter extraction:', err);
   }
 
   return chapters;
 }
 
 /**
- * Rewrites relative images, GIFs, and anchor links in Markdown to verified GitHub absolute URLs.
+ * Resolves a document-relative path against the document's containing directory
+ * and confines the resulting normalized path to the repository root.
+ */
+export function resolveRepoRelativePath(
+  relativePath: string | null | undefined,
+  docPath: string = 'README.md'
+): { type: 'anchor' | 'absolute' | 'unsafe' | 'escaped' | 'resolved'; path: string } | null {
+  if (!relativePath || typeof relativePath !== 'string') return null;
+  const trimmed = relativePath.trim();
+  if (trimmed.length === 0) return null;
+
+  // In-page hash fragments
+  if (trimmed.startsWith('#')) {
+    return { type: 'anchor', path: trimmed };
+  }
+
+  // Legitimate absolute URLs or protocol-relative URLs
+  if (/^(?:https?:|\/\/)/i.test(trimmed)) {
+    return { type: 'absolute', path: trimmed };
+  }
+
+  // Reject unsafe schemes (javascript:, data:, file:, vbscript:, etc.) or other schemes
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
+    return { type: 'unsafe', path: trimmed };
+  }
+
+  // Determine document directory base (e.g. docs/architecture/spec.md -> docs/architecture)
+  const cleanDoc = (docPath || 'README.md').trim().replace(/^\.?\//, '');
+  const lastSlash = cleanDoc.lastIndexOf('/');
+  const docDir = lastSlash !== -1 ? cleanDoc.substring(0, lastSlash) : '';
+
+  // Separate path part from query parameters and hash fragments
+  let pathPart = trimmed;
+  let suffix = '';
+  const qIdx = pathPart.indexOf('?');
+  const hIdx = pathPart.indexOf('#');
+  const splitIdx =
+    qIdx !== -1 && hIdx !== -1
+      ? Math.min(qIdx, hIdx)
+      : qIdx !== -1
+      ? qIdx
+      : hIdx;
+  if (splitIdx !== -1) {
+    suffix = pathPart.substring(splitIdx);
+    pathPart = pathPart.substring(0, splitIdx);
+  }
+
+  // Paths starting with '/' are repo-root absolute
+  const isRootAbsolute = pathPart.startsWith('/');
+  const segments: string[] = (!isRootAbsolute && docDir) ? docDir.split('/') : [];
+  const parts = pathPart.split('/');
+
+  for (const part of parts) {
+    if (part === '' || part === '.') continue;
+    if (part === '..') {
+      if (segments.length > 0) {
+        segments.pop();
+      } else {
+        // Escaped repository root
+        return { type: 'escaped', path: trimmed };
+      }
+    } else {
+      segments.push(part);
+    }
+  }
+
+  const resolved = segments.join('/') + suffix;
+  return { type: 'resolved', path: resolved };
+}
+
+function getCodeIntervals(content: string): [number, number][] {
+  const intervals: [number, number][] = [];
+  try {
+    const tree = markdownProcessor.parse(content);
+    visit(
+      tree,
+      (node: {
+        type: string;
+        position?: { start?: { offset?: number }; end?: { offset?: number } };
+      }) => {
+        if (
+          (node.type === 'code' || node.type === 'inlineCode') &&
+          node.position?.start?.offset !== undefined &&
+          node.position?.end?.offset !== undefined
+        ) {
+          intervals.push([node.position.start.offset, node.position.end.offset]);
+        }
+      }
+    );
+  } catch (err) {
+    console.warn('[GitHubSync] AST parse error in relative URL rewriting:', err);
+  }
+  return intervals;
+}
+
+/**
+ * Rewrites relative images, GIFs, and anchor links in Markdown to verified GitHub absolute URLs,
+ * resolving paths against the directory of the target Markdown document while protecting code blocks.
  */
 export function rewriteMarkdownRelativeUrls(
   markdown: string,
   owner: string,
   repo: string,
-  branch: string
+  branch: string,
+  docPath: string = 'README.md'
 ): string {
+  if (!markdown || typeof markdown !== 'string') return '';
+
   const rawBase = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}`;
   const blobBase = `https://github.com/${owner}/${repo}/blob/${branch}`;
 
   // 1. Rewrite Markdown image syntax: ![alt](relative_path.png)
-  let transformed = markdown.replace(/!\[(.*?)\]\((?!https?:\/\/|\/\/)(.*?)\)/g, (fullMatch, alt, relativePath) => {
-    const cleanPath = relativePath.trim().replace(/^\.?\//, '');
-    return `![${alt}](${rawBase}/${cleanPath})`;
-  });
+  let codeRanges = getCodeIntervals(markdown);
+  let transformed = markdown.replace(
+    /(!\[(.*?)\]\()\s*([^\s)]+)(\s*(?:["'][^"']*["'])?\s*\))/g,
+    (fullMatch, pre, alt, relativePath, post, offset) => {
+      if (codeRanges.some(([start, end]) => offset >= start && offset < end)) {
+        return fullMatch;
+      }
+      const res = resolveRepoRelativePath(relativePath, docPath);
+      if (res && res.type === 'resolved') {
+        return `${pre}${rawBase}/${res.path}${post}`;
+      }
+      return fullMatch;
+    }
+  );
 
   // 2. Rewrite HTML <img> tags with relative src: <img src="relative_path.png" ... />
-  transformed = transformed.replace(/<img\s+([^>]*?)src=["'](?!https?:\/\/|\/\/)([^"']+)["']([^>]*?)\/?>/gi, (fullMatch, pre, relativePath, post) => {
-    const cleanPath = relativePath.trim().replace(/^\.?\//, '');
-    return `<img ${pre}src="${rawBase}/${cleanPath}"${post}/>`;
-  });
+  codeRanges = getCodeIntervals(transformed);
+  transformed = transformed.replace(
+    /(<img\s+[^>]*?src=["'])([^"']+)(["'][^>]*?\/?>)/gi,
+    (fullMatch, pre, relativePath, post, offset) => {
+      if (codeRanges.some(([start, end]) => offset >= start && offset < end)) {
+        return fullMatch;
+      }
+      const res = resolveRepoRelativePath(relativePath, docPath);
+      if (res && res.type === 'resolved') {
+        return `${pre}${rawBase}/${res.path}${post}`;
+      }
+      return fullMatch;
+    }
+  );
 
   // 3. Rewrite relative anchor links: [text](docs/path.md) -> github.com/:owner/:repo/blob/:branch/docs/path.md
-  transformed = transformed.replace(/\[(.*?)\]\((?!https?:\/\/|\/\/|#)(.*?)\)/g, (fullMatch, text, relativePath) => {
-    const cleanPath = relativePath.trim().replace(/^\.?\//, '');
-    return `[${text}](${blobBase}/${cleanPath})`;
-  });
+  codeRanges = getCodeIntervals(transformed);
+  transformed = transformed.replace(
+    /((?:^|[^!])\[(.*?)\]\()\s*([^\s)]+)(\s*(?:["'][^"']*["'])?\s*\))/g,
+    (fullMatch, pre, text, relativePath, post, offset) => {
+      if (codeRanges.some(([start, end]) => offset >= start && offset < end)) {
+        return fullMatch;
+      }
+      const res = resolveRepoRelativePath(relativePath, docPath);
+      if (res && res.type === 'resolved') {
+        return `${pre}${blobBase}/${res.path}${post}`;
+      }
+      return fullMatch;
+    }
+  );
 
   return transformed;
 }
@@ -243,8 +393,6 @@ export function isBadgeUrl(url: string, alt: string = ''): boolean {
   }
   return false;
 }
-
-const markdownProcessor = unified().use(remarkParse);
 
 /**
  * Extracts authentic non-badge project screenshots and diagrams from Markdown and HTML img tags
@@ -504,7 +652,7 @@ export async function getGitHubCaseStudy(
   }
 
   // Rewrite all relative images and links to valid raw GitHub URLs
-  const rewrittenMarkdown = rewriteMarkdownRelativeUrls(rawText, owner, repo, successfulBranch);
+  const rewrittenMarkdown = rewriteMarkdownRelativeUrls(rawText, owner, repo, successfulBranch, docPath);
   const chapters = extractMarkdownChapters(rewrittenMarkdown);
   const extractedImages = extractMarkdownImages(rewrittenMarkdown);
 

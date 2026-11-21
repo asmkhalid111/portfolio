@@ -3,6 +3,12 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
+import { visit } from 'unist-util-visit';
+import {
+  HeadingSlugger,
+  getNodeText,
+  RESERVED_PAGE_ANCHORS,
+} from '@/lib/case-studies/slugger';
 import { ArrowUpRight } from 'lucide-react';
 
 export interface MarkdownContentProps {
@@ -10,23 +16,20 @@ export interface MarkdownContentProps {
   promotedImageUrls?: string[];
 }
 
-function getText(node: React.ReactNode): string {
-  if (typeof node === 'string') return node;
-  if (typeof node === 'number') return String(node);
-  if (Array.isArray(node)) return node.map(getText).join('');
-  if (node && typeof node === 'object' && 'props' in node) {
-    return getText((node as { props: { children?: React.ReactNode } }).props.children);
-  }
-  return '';
-}
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+/**
+ * Remark plugin that marks genuine Markdown heading nodes before HAST conversion.
+ * Raw HTML headings (<h1-h6>) bypass this visitor, allowing the rehype slugger
+ * to allocate IDs strictly to Markdown headings and keep parity with chapter extraction.
+ */
+function remarkTagHeadings() {
+  return (tree: unknown) => {
+    visit(tree as Parameters<typeof visit>[0], 'heading', (node: { data?: Record<string, unknown> }) => {
+      node.data = node.data || {};
+      const hProps = (node.data.hProperties || {}) as Record<string, unknown>;
+      hProps['data-md-heading'] = 'true';
+      node.data.hProperties = hProps;
+    });
+  };
 }
 
 // Customize sanitize schema to allow styling classes and attributes for clean markdown
@@ -34,11 +37,46 @@ const customSanitizeSchema = {
   ...defaultSchema,
   attributes: {
     ...defaultSchema.attributes,
-    '*': [...(defaultSchema.attributes?.['*'] || []), 'className', 'align', 'id'],
+    '*': [
+      ...(defaultSchema.attributes?.['*'] || []),
+      'className',
+      'align',
+      'id',
+      'data-md-heading',
+      'dataMdHeading',
+    ],
     img: [...(defaultSchema.attributes?.img || []), 'src', 'alt', 'width', 'height', 'loading'],
     a: [...(defaultSchema.attributes?.a || []), 'href', 'target', 'rel'],
   },
 };
+
+/**
+ * Rehype plugin executed strictly AFTER rehypeSanitize.
+ * Allocates unique, deterministic heading IDs to Markdown headings in exact document order
+ * using the shared HeadingSlugger, ensuring 100% parity with chapter extraction.
+ * Raw HTML headings are excluded from automatic slug allocation to prevent sequence drift.
+ */
+function rehypeHeadingSlug() {
+  return (tree: unknown) => {
+    const slugger = new HeadingSlugger(RESERVED_PAGE_ANCHORS);
+    visit(
+      tree as Parameters<typeof visit>[0],
+      'element',
+      (node: { tagName: string; properties?: Record<string, unknown> }) => {
+        if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(node.tagName)) {
+          const props = node.properties || {};
+          if (props.dataMdHeading === 'true' || props['data-md-heading'] === 'true') {
+            const text = getNodeText(node);
+            const id = slugger.slug(text);
+            props.id = id;
+            delete props.dataMdHeading;
+            delete props['data-md-heading'];
+          }
+        }
+      }
+    );
+  };
+}
 
 function isChildRenderable(child: React.ReactNode, promotedUrls: string[]): boolean {
   if (child === null || child === undefined || child === false) return false;
@@ -65,12 +103,10 @@ export function MarkdownContent({ content, promotedImageUrls = [] }: MarkdownCon
   return (
     <div className="case-study-prose max-w-none text-zinc-800 dark:text-zinc-200">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw, [rehypeSanitize, customSanitizeSchema]]}
+        remarkPlugins={[remarkGfm, remarkTagHeadings]}
+        rehypePlugins={[rehypeRaw, [rehypeSanitize, customSanitizeSchema], rehypeHeadingSlug]}
         components={{
-          h1({ children }) {
-            const text = getText(children);
-            const id = slugify(text);
+          h1({ id, children }) {
             return (
               <h1
                 id={id}
@@ -80,9 +116,7 @@ export function MarkdownContent({ content, promotedImageUrls = [] }: MarkdownCon
               </h1>
             );
           },
-          h2({ children }) {
-            const text = getText(children);
-            const id = slugify(text);
+          h2({ id, children }) {
             return (
               <h2
                 id={id}
@@ -92,9 +126,7 @@ export function MarkdownContent({ content, promotedImageUrls = [] }: MarkdownCon
               </h2>
             );
           },
-          h3({ children }) {
-            const text = getText(children);
-            const id = slugify(text);
+          h3({ id, children }) {
             return (
               <h3
                 id={id}
@@ -104,9 +136,12 @@ export function MarkdownContent({ content, promotedImageUrls = [] }: MarkdownCon
               </h3>
             );
           },
-          h4({ children }) {
+          h4({ id, children }) {
             return (
-              <h4 className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mt-6 mb-2">
+              <h4
+                id={id}
+                className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mt-6 mb-2"
+              >
                 {children}
               </h4>
             );

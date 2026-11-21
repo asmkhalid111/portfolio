@@ -253,6 +253,48 @@ describe('Task 11C: Progressive GitHub Documentation Hierarchy', () => {
         expect(screen.getByTestId('readme-content')).toBeDefined();
       });
     });
+
+    it('auto-expands documentation when deep-linked with a percent-encoded Bengali hash', async () => {
+      const bengaliChapters: Chapter[] = [
+        { id: 'architectural-overview', title: 'Architectural Overview', level: 2 },
+        { id: 'বর্ণমালা-লেআউট', title: 'বর্ণমালা লেআউট', level: 2 },
+      ];
+
+      function BengaliCaseStudyTestView() {
+        return (
+          <CaseStudyCoordinator documentationChapterIds={['বর্ণমালা-লেআউট']}>
+            <StickyChapterNav chapters={bengaliChapters} />
+            <DocumentationDrawer defaultBranch="master" chapterCount={1}>
+              <div data-testid="bengali-readme-content">
+                <h2 id="বর্ণমালা-লেআউট">বর্ণমালা লেআউট</h2>
+                <p>Bengali keyboard mapping documentation.</p>
+              </div>
+            </DocumentationDrawer>
+          </CaseStudyCoordinator>
+        );
+      }
+
+      // Simulate browser setting percent-encoded hash on load: #%E0%A6%AC%E0%A6%B0...
+      window.location.hash = '#' + encodeURIComponent('বর্ণমালা-লেআউট');
+
+      render(<BengaliCaseStudyTestView />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('bengali-readme-content')).toBeDefined();
+      });
+    });
+
+    it('handles malformed percent-encoded URL fragments gracefully without crashing', () => {
+      // Simulate browser setting malformed hash that throws in decodeURIComponent: #%E0%A6%
+      window.location.hash = '#%E0%A6%';
+
+      expect(() => {
+        render(<IntegratedCaseStudyTestView />);
+      }).not.toThrow();
+
+      // Malformed hash did not crash the page, drawer remains in default state
+      expect(screen.queryByTestId('readme-content')).toBeNull();
+    });
   });
 
   describe('Edge Cases and Resilience', () => {

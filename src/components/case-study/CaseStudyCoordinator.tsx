@@ -150,8 +150,16 @@ export function CaseStudyCoordinator({
   // Deep-link and history (hashchange / popstate) handler
   useEffect(() => {
     const handleUrlHash = () => {
-      const hash = window.location.hash.replace(/^#/, '');
-      if (!hash) return;
+      const rawHash = window.location.hash.replace(/^#/, '');
+      if (!rawHash) return;
+
+      let hash = rawHash;
+      try {
+        hash = decodeURIComponent(rawHash);
+      } catch {
+        // Malformed percent-encoded fragment; ignore safely
+        return;
+      }
 
       if (isDocChapter(hash)) {
         setIsDocumentationExpanded(true);
