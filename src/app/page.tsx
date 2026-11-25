@@ -1,29 +1,16 @@
-import {
-  GraduationCap,
-  Briefcase,
-  Code2,
-  Terminal,
-  ArrowUpRight,
-  MapPin,
-  Linkedin,
-  Github,
-  Layers,
-  Cpu,
-  Database,
-  Wrench,
-  FolderKanban,
-  ExternalLink,
-  AlertCircle,
-} from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { ArrowDown, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
+import { ProjectShowcase, type ShowcaseProject } from "@/components/home/ProjectShowcase";
+import { HomeSection } from "@/components/home/HomeSection";
+import { createClient } from "@/lib/supabase/server";
+import styles from "./home.module.css";
 
 // Verified CV information from docs/CONTENT_INVENTORY.md
 const PROFILE = {
   name: "Ashrafuzzaman Khalid",
-  headline: "Computer Science & Engineering Student · Systems & Software Developer",
   location: "Dhaka, Bangladesh",
-  bio: "Undergraduate student in Computer Science & Engineering at Daffodil International University. Passionate about software engineering fundamentals, systems programming, backend architectures, and compiler mechanics. Experienced in Java backend development, Python systems, and modern web application development.",
+  bio: "I study Computer Science and Engineering at Daffodil International University. My projects start with a problem I want to solve. I define the scope and technical direction, then use AI to help implement and verify the work.",
   githubUrl: "https://github.com/asmkhalid111",
   linkedinUrl: "https://www.linkedin.com/in/asmkhalid101/",
 };
@@ -35,388 +22,189 @@ const EDUCATION = [
     period: "2023 – Present",
     grade: "CGPA: 3.67 / 4.00",
   },
-];
-
-const EXPERIENCE = [
   {
-    company: "Codveda Technologies",
-    role: "Java Development Intern",
-    type: "Remote Internship",
-    period: "May 2026 – July 2026",
-    description:
-      "Developed Java applications using core Java concepts and object-oriented programming. Built structured console-based applications to solve algorithmic and logical challenges.",
-    skills: ["Java", "Object-Oriented Programming"],
+    institution: "Milestone College",
+    degree: "Higher Secondary Certificate (HSC), Science",
+    period: "2021",
+    grade: "GPA: 5.00 / 5.00",
+  },
+  {
+    institution: "Saint Nicholas High School",
+    degree: "Secondary School Certificate (SSC), Science",
+    period: "2019",
+    grade: "GPA: 4.89 / 5.00",
   },
 ];
 
 const SKILL_GROUPS = [
   {
-    category: "Programming Languages",
-    icon: Code2,
-    skills: ["Python", "C", "C++", "Java", "JavaScript", "TypeScript", "SQL"],
+    category: "AI-assisted development",
+    description: "Writing specifications, giving coding agents the relevant context, and reviewing their plans and changes.",
   },
   {
-    category: "Frameworks & Backend",
-    icon: Cpu,
-    skills: ["Spring Boot", "FastAPI", "Next.js", "Node.js", "WebSockets"],
+    category: "Product and architecture",
+    description: "Defining MVP scope and requirements, choosing how system components fit together, and documenting trade-offs.",
   },
   {
-    category: "Databases & Storage",
-    icon: Database,
-    skills: ["PostgreSQL (with RLS)", "SQLite", "Supabase"],
+    category: "Software delivery",
+    description: "Using Git and GitHub to track changes, reviewing test evidence, and writing technical documentation.",
   },
-  {
-    category: "Testing & Engineering Tools",
-    icon: Wrench,
-    skills: ["Git", "GitHub", "pytest", "Selenium", "Playwright", "Vitest", "Linux / WSL"],
-  },
+];
+
+const previews = [
+  { slug: "bornomala", file: "bornomala", alt: "BornoMala phonetic sandbox showing Bangla typing and word suggestions" },
+  { slug: "stone-bridge-holdings", file: "stone-bridge", liveUrl: "https://stonebridgeholdings-website.netlify.app", alt: "Stone Bridge Holdings homepage showing an architectural drawing in the website interface" },
+  { slug: "rainy-cityscape", file: "rainy-cityscape", alt: "Rainy Cityscape simulation showing illuminated buildings in the rain" },
 ];
 
 export const instant = false;
 
 export default async function HomePage() {
   const supabase = await createClient();
-
-  const { data: projects, error: projectsError } = await supabase
+  const { data, error } = await supabase
     .from("projects")
     .select("id, title, slug, summary, technologies, repository_url, live_demo_url, featured")
     .eq("status", "published")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false });
+  const projects = error ? [] : data ?? [];
+  const selected = previews.flatMap((preview) => {
+    const project = projects.find((row) => row.slug === preview.slug)
+      ?? projects.find((row) => preview.liveUrl && row.live_demo_url?.replace(/\/$/, "") === preview.liveUrl);
+    if (!project) return [];
 
-  const hasProjects = projects && projects.length > 0;
+    return [{
+      ...project,
+      poster: "/project-previews/" + preview.file + ".webp",
+      clip: "/project-previews/" + preview.file + ".webm",
+      alt: preview.alt,
+    } satisfies ShowcaseProject & typeof project];
+  });
+
+  const illustrated = new Set(selected.map((project) => project.slug));
+  const moreProjects = projects.filter((project) => !illustrated.has(project.slug));
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-20 space-y-16">
-      {/* 1. Hero / About Section */}
-      <section id="about" aria-labelledby="about-heading" className="space-y-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50/70 px-3 py-1 text-xs font-medium text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300">
-            <Terminal className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>Software Engineering Portfolio</span>
+    <div className={styles.home}>
+      <div className={styles.hero} data-showcase={selected.length > 0}>
+        <section className={styles.intro} aria-labelledby="intro-heading">
+          <p className={styles.location}>{PROFILE.location}</p>
+          <div>
+            <h1 id="intro-heading">{PROFILE.name}</h1>
+            <p className={styles.heroCopy}>
+              I am a CSE student building software with AI assistance, from Bangla input tools to interactive websites.
+            </p>
+            <div className={styles.actions}>
+              <Link href="#projects" className={styles.primary}>
+                Explore work <ArrowDown size={17} aria-hidden="true" />
+              </Link>
+              <Link href="#about" className={styles.textLink}>About me</Link>
+            </div>
           </div>
-          <div className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-            <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>{PROFILE.location}</span>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <h1
-            id="about-heading"
-            className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl dark:text-gray-50"
-          >
-            {PROFILE.name}
-          </h1>
-          <p className="text-xl font-medium text-gray-600 sm:text-2xl dark:text-gray-400">
-            {PROFILE.headline}
-          </p>
-        </div>
-
-        <p className="max-w-3xl text-base leading-relaxed text-gray-700 sm:text-lg dark:text-gray-300">
-          {PROFILE.bio}
-        </p>
-
-        {/* Profile Links */}
-        <div className="flex flex-wrap items-center gap-3 pt-2">
-          <a
-            href={PROFILE.githubUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
-          >
-            <Github className="h-4 w-4" aria-hidden="true" />
-            <span>GitHub Profile</span>
-            <ArrowUpRight className="h-4 w-4 opacity-75" aria-hidden="true" />
+          <a className={styles.profileLink} href={PROFILE.githubUrl} target="_blank" rel="noopener noreferrer">
+            GitHub Profile <ArrowUpRight size={15} aria-hidden="true" />
           </a>
+        </section>
+        {selected.length > 0 && <ProjectShowcase projects={selected.map(({ slug, title, summary, poster, clip, alt }) => ({ slug, title, summary, poster, clip, alt }))} />}
+      </div>
 
-          <a
-            href={PROFILE.linkedinUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
-          >
-            <Linkedin className="h-4 w-4 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-            <span>LinkedIn</span>
-            <ArrowUpRight className="h-4 w-4 opacity-75" aria-hidden="true" />
-          </a>
-        </div>
-      </section>
-
-      {/* 2. Education Section */}
-      <section id="education" aria-labelledby="education-heading" className="space-y-6 border-t border-gray-200 pt-12 dark:border-gray-800">
-        <div className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
-          <GraduationCap className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-          <h2 id="education-heading" className="text-2xl font-bold tracking-tight">
-            Education
-          </h2>
-        </div>
-
-        <div className="space-y-6">
-          {EDUCATION.map((edu) => (
-            <article
-              key={edu.institution}
-              className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/60"
-            >
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                  {edu.institution}
-                </h3>
-                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 sm:text-right">
-                  {edu.period}
-                </span>
-              </div>
-
-              <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                <span className="font-medium text-gray-800 dark:text-gray-200">{edu.degree}</span>
-                <span>&middot;</span>
-                <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
-                  {edu.grade}
-                </span>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {/* 3. Internship Experience Section */}
-      <section id="experience" aria-labelledby="experience-heading" className="space-y-6 border-t border-gray-200 pt-12 dark:border-gray-800">
-        <div className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
-          <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-          <h2 id="experience-heading" className="text-2xl font-bold tracking-tight">
-            Work Experience
-          </h2>
-        </div>
-
-        <div className="space-y-6">
-          {EXPERIENCE.map((exp) => (
-            <article
-              key={exp.company}
-              className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/60"
-            >
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                    {exp.role}
-                  </h3>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {exp.company} <span className="text-xs text-gray-500 dark:text-gray-400">({exp.type})</span>
-                  </p>
-                </div>
-                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 sm:text-right">
-                  {exp.period}
-                </span>
-              </div>
-
-              <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                {exp.description}
-              </p>
-
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                {exp.skills.map((skill) => (
-                  <span
-                    key={skill}
-                    className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                  >
-                    {skill}
-                  </span>
+      <HomeSection id="projects" className={styles.section}>
+        <h2 id="projects-heading">Projects</h2>
+        {error ? (
+          <p>Unable to load portfolio projects at this time.</p>
+        ) : projects.length === 0 ? (
+          <p>No published projects yet.</p>
+        ) : (
+          <>
+            {selected.length > 0 && (
+              <div className={styles.projectGallery}>
+                {selected.map((project) => (
+                  <article className={styles.feature} data-home-reveal="" key={project.slug} data-lead={project.slug === "bornomala"}>
+                    <Link href={"/projects/" + project.slug} className={styles.featureLink} aria-label={"Read the " + project.title + " case study"}>
+                      <div className={styles.featureMedia}>
+                        <Image src={project.poster} alt={project.alt} fill unoptimized sizes="(min-width: 48rem) 50vw, 100vw" />
+                      </div>
+                      <div className={styles.featureCaption}>
+                        <div>
+                          <h3>{project.title}</h3>
+                          {project.summary && <p>{project.summary}</p>}
+                        </div>
+                        <ArrowUpRight size={23} aria-hidden="true" />
+                      </div>
+                    </Link>
+                    <div className={styles.projectLinks}>
+                      {project.repository_url && (
+                        <a href={project.repository_url} target="_blank" rel="noopener noreferrer">Source code</a>
+                      )}
+                      {project.live_demo_url && (
+                        <a href={project.live_demo_url} target="_blank" rel="noopener noreferrer">Live demo</a>
+                      )}
+                    </div>
+                  </article>
                 ))}
               </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {/* 4. Published Projects Section */}
-      <section id="projects" aria-labelledby="projects-heading" className="space-y-6 border-t border-gray-200 pt-12 dark:border-gray-800">
-        <div className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
-          <FolderKanban className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-          <h2 id="projects-heading" className="text-2xl font-bold tracking-tight">
-            Featured Projects
-          </h2>
-        </div>
-
-        {projectsError ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-5 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
-            <div className="flex items-center gap-2 font-medium">
-              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>Unable to load portfolio projects at this time.</span>
-            </div>
-          </div>
-        ) : !hasProjects ? (
-          <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50/50 p-8 text-center dark:border-gray-800 dark:bg-gray-900/30">
-            <FolderKanban className="mx-auto h-8 w-8 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-            <h3 className="mt-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
-              No Published Projects Yet
-            </h3>
-            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-              Case studies and software engineering projects will appear here once published.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            {projects.map((project) => (
-              <article
-                key={project.id}
-                className="flex flex-col justify-between rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900/60"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                      <Link
-                        href={`/projects/${project.slug}`}
-                        className="transition-colors hover:text-blue-600 dark:hover:text-blue-400"
-                      >
-                        {project.title}
-                      </Link>
-                    </h3>
-                    {project.featured && (
-                      <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
-                        Featured
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                    {project.summary}
-                  </p>
-
-                  {project.technologies && project.technologies.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-1.5">
-                      {project.technologies.map((tech) => (
-                        <span
-                          key={tech}
-                          className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                        >
-                          {tech}
-                        </span>
-                      ))}
+            )}
+            {moreProjects.length > 0 && (
+              <div className={styles.projectList}>
+                {selected.length > 0 && <h3>More projects</h3>}
+                {moreProjects.map((project) => (
+                  <article className={styles.project} data-home-reveal="" key={project.id}>
+                    <h3><Link href={"/projects/" + project.slug}>{project.title}</Link></h3>
+                    <div>
+                      <p>{project.summary}</p>
+                      {!!project.technologies?.length && <p className={styles.detail}>{project.technologies.join(" / ")}</p>}
                     </div>
-                  )}
-                </div>
-
-                <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
-                  <Link
-                    href={`/projects/${project.slug}`}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                  >
-                    <span>View Case Study</span>
-                    <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-                  </Link>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    {project.repository_url && (
-                      <a
-                        href={project.repository_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-                      >
-                        <Github className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>Source Code</span>
-                        <ArrowUpRight className="h-3 w-3 opacity-70" aria-hidden="true" />
-                      </a>
-                    )}
-
-                    {project.live_demo_url && (
-                      <a
-                        href={project.live_demo_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>Live Demo</span>
-                        <ArrowUpRight className="h-3 w-3 opacity-70" aria-hidden="true" />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* 5. Technical Skills Section */}
-      <section id="skills" aria-labelledby="skills-heading" className="space-y-6 border-t border-gray-200 pt-12 dark:border-gray-800">
-        <div className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
-          <Layers className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-          <h2 id="skills-heading" className="text-2xl font-bold tracking-tight">
-            Technical Skills &amp; Competencies
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          {SKILL_GROUPS.map((group) => {
-            const Icon = group.icon;
-            return (
-              <div
-                key={group.category}
-                className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900/60"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="rounded-lg bg-blue-50 p-1.5 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
-                    <Icon className="h-4 w-4" aria-hidden="true" />
-                  </div>
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                    {group.category}
-                  </h3>
-                </div>
-
-                <div className="flex flex-wrap gap-1.5">
-                  {group.skills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
+                    <div className={styles.projectLinks}>
+                      <Link className={styles.textLink} href={"/projects/" + project.slug}>View case study</Link>
+                      {project.repository_url && <a href={project.repository_url} target="_blank" rel="noopener noreferrer">Source code</a>}
+                      {project.live_demo_url && <a href={project.live_demo_url} target="_blank" rel="noopener noreferrer">Live demo</a>}
+                    </div>
+                  </article>
+                ))}
               </div>
-            );
-          })}
-        </div>
-      </section>
+            )}
+          </>
+        )}
+      </HomeSection>
 
-      {/* 6. Contact & Profiles Section */}
-      <section id="contact" aria-labelledby="contact-heading" className="space-y-6 border-t border-gray-200 pt-12 dark:border-gray-800">
-        <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-6 sm:p-8 dark:border-gray-800 dark:bg-gray-900/40">
-          <div className="max-w-2xl space-y-3">
-            <h2 id="contact-heading" className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              Get in Touch &amp; Professional Profiles
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-              Open to engineering discussions, software opportunities, and academic collaboration. Feel free to connect via LinkedIn or review my open-source code on GitHub.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-4 pt-3">
-              <a
-                href={PROFILE.githubUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-900 transition-colors hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-400"
-              >
-                <Github className="h-4 w-4" aria-hidden="true" />
-                <span>github.com/asmkhalid111</span>
-                <ArrowUpRight className="h-3.5 w-3.5 opacity-70" aria-hidden="true" />
-              </a>
-
-              <a
-                href={PROFILE.linkedinUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                <Linkedin className="h-4 w-4" aria-hidden="true" />
-                <span>linkedin.com/in/asmkhalid101</span>
-                <ArrowUpRight className="h-3.5 w-3.5 opacity-70" aria-hidden="true" />
-              </a>
-            </div>
+      <HomeSection id="about" className={styles.section}>
+        <h2 id="about-heading" data-home-reveal="">About</h2>
+        <div className={styles.background}>
+          <div className={styles.aboutProfile} data-home-reveal="">
+            <p className={styles.bio}>{PROFILE.bio}</p>
+            <section id="education" aria-labelledby="education-heading">
+              <h3 id="education-heading">Education</h3>
+              {EDUCATION.map((item) => (
+                <div className={styles.educationEntry} key={item.institution}>
+                  <h4>{item.institution}</h4>
+                  <p>{item.degree}</p>
+                  <p className={styles.detail}>{item.period} / {item.grade}</p>
+                </div>
+              ))}
+            </section>
           </div>
+
+          <section id="skills" aria-labelledby="skills-heading" data-home-reveal="">
+            <h3 id="skills-heading">Technical Skills</h3>
+            <dl>
+              {SKILL_GROUPS.map((group) => (
+                <div key={group.category}>
+                  <dt>{group.category}</dt>
+                  <dd>{group.description}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
         </div>
-      </section>
+      </HomeSection>
+
+      <HomeSection id="contact" className={styles.section}>
+        <h2 id="contact-heading" data-home-reveal="">Get in touch</h2>
+        <div className={styles.actions} data-home-reveal="">
+          <a className={styles.textLink} href={PROFILE.githubUrl} target="_blank" rel="noopener noreferrer">GitHub <ArrowUpRight size={16} aria-hidden="true" /></a>
+          <a className={styles.textLink} href={PROFILE.linkedinUrl} target="_blank" rel="noopener noreferrer">LinkedIn <ArrowUpRight size={16} aria-hidden="true" /></a>
+        </div>
+      </HomeSection>
     </div>
   );
 }
