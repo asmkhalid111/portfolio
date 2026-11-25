@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import HomePage from "@/app/page";
+import { getGitHubCaseStudy } from "@/lib/github/sync";
+
+vi.mock("@/lib/github/sync", async (original) => ({
+  ...await original<typeof import("@/lib/github/sync")>(),
+  getGitHubCaseStudy: vi.fn(),
+}));
 
 const { readResult, filterStatus } = vi.hoisted(() => ({
   readResult: vi.fn(),
@@ -54,6 +60,9 @@ afterEach(() => {
 describe("HomePage Component (Unit Test)", () => {
   beforeEach(() => {
     readResult.mockResolvedValue({ data: mockProjects, error: null });
+    vi.mocked(getGitHubCaseStudy).mockResolvedValue({
+      success: true, rawMarkdown: "", sourceUrl: "", defaultBranch: "main", chapters: [], extractedImages: [],
+    });
     vi.stubGlobal("matchMedia", () => ({
       matches: true,
       addEventListener() {},
@@ -89,7 +98,7 @@ describe("HomePage Component (Unit Test)", () => {
     expect(education.getByText("2019 / GPA: 4.89 / 5.00")).toBeDefined();
     expect(screen.queryByRole("heading", { name: "Work Experience" })).toBeNull();
     expect(screen.getByText("AI-assisted development")).toBeDefined();
-    expect(screen.getByRole("heading", { name: /Technical Skills/i })).toBeDefined();
+    expect(screen.getByRole("heading", { name: /How I work/i })).toBeDefined();
     expect(screen.getByRole("heading", { name: /Get in Touch/i })).toBeDefined();
   });
 
@@ -99,85 +108,61 @@ describe("HomePage Component (Unit Test)", () => {
 
     expect(screen.getByRole("heading", { name: "Projects" })).toBeDefined();
     expect(filterStatus).toHaveBeenCalledWith("status", "published");
-    expect(screen.getByText("Web-LAN-Chat")).toBeDefined();
-    expect(screen.getByText("BanglaScript Compiler")).toBeDefined();
+    const gallery = within(screen.getByRole("region", { name: "Projects" }));
+    expect(gallery.getByRole("link", { name: "Read case study: Web-LAN-Chat" })).toBeDefined();
+    expect(gallery.getByRole("link", { name: "Read case study: BanglaScript Compiler" })).toBeDefined();
   });
 
-  it("leads with BornoMala and only includes preview projects returned by the published query", async () => {
+  it("uses curated hero priority and renders custom and bundled media in the same gallery", async () => {
     readResult.mockResolvedValueOnce({
       error: null,
       data: [
-        { ...mockProjects[0], slug: "rainy-cityscape", title: "Rainy Cityscape" },
         { ...mockProjects[1], slug: "bornomala", title: "BornoMala" },
+        {
+          ...mockProjects[0],
+          slug: "newly-published",
+          title: "Newly published",
+          project_media: [
+            { id: "still", storage_path: "https://example.com/cover.webp", alt_text: "New project screenshot", sort_order: 1 },
+            { id: "demo", storage_path: "https://example.com/demo.gif", alt_text: "New project demo", sort_order: 0 },
+          ],
+        },
+        { ...mockProjects[1], id: "no-media", slug: "no-media", title: "No Media" },
       ],
     });
-    render(await HomePage());
+    const component = await HomePage();
+    await act(async () => { render(component); });
 
     const showcase = within(screen.getByRole("region", { name: "Selected work" }));
-    expect(showcase.getByText("01 / 02")).toBeDefined();
     expect(showcase.getByRole("link", { name: "Read case study" }).getAttribute("href")).toBe("/projects/bornomala");
-    expect(screen.queryByText("Stone Bridge Holdings")).toBeNull();
-    const projectGallery = within(screen.getByRole("region", { name: "Projects" }));
-    expect(projectGallery.getByRole("img", { name: /BornoMala/ })).toBeDefined();
-    expect(projectGallery.getByRole("link", { name: "Read the BornoMala case study" }).getAttribute("href")).toBe("/projects/bornomala");
-    expect(showcase.getByRole("button", { name: "Play project preview" })).toBeDefined();
-    expect(showcase.getByRole("button", { name: "Start automatic project switching" })).toBeDefined();
     fireEvent.click(showcase.getByRole("button", { name: "Next project" }));
-    expect(showcase.getByText("02 / 02")).toBeDefined();
-    expect(showcase.getByRole("link", { name: "Read case study" }).getAttribute("href")).toBe("/projects/rainy-cityscape");
+    expect(showcase.getByRole("link", { name: "Read case study" }).getAttribute("href")).toBe("/projects/newly-published");
     fireEvent.click(showcase.getByRole("button", { name: "Previous project" }));
-    expect(showcase.getByText("01 / 02")).toBeDefined();
+    const gallery = within(screen.getByRole("region", { name: "Projects" }));
+    const [lead, bundled, empty] = gallery.getAllByRole("article");
+    expect(lead.getAttribute("data-lead")).toBe("true");
+    expect(within(lead).getByRole("img", { name: "New project screenshot" })).toBeDefined();
+    expect(within(lead).queryByRole("img", { name: "New project demo" })).toBeNull();
+    expect(within(lead).queryByRole("button", { name: "Play project preview" })).toBeNull();
+    expect(within(bundled).getByRole("img", { name: /BornoMala/ })).toBeDefined();
+    expect(within(empty).getByRole("link", { name: "Read case study: No Media" }).getAttribute("href")).toBe("/projects/no-media");
+    expect(within(empty).queryByRole("img")).toBeNull();
+    expect(within(empty).getByText("C / C++ / Flex")).toBeDefined();
   });
 
-  it("rotates visible projects and pauses when a project is picked or a rotation stop is requested", async () => {
-    vi.stubGlobal("matchMedia", () => ({
-      matches: false,
-      addEventListener() {},
-      removeEventListener() {},
+  it("fills an ordinary project card from README media without promoting it to the curated hero", async () => {
+    vi.mocked(getGitHubCaseStudy).mockImplementation(async (url) => ({
+      success: true, rawMarkdown: "", sourceUrl: "", defaultBranch: "main", chapters: [],
+      extractedImages: url?.includes("Bangla-Compiler") ? [
+        { src: "https://raw.githubusercontent.com/example/compiler/main/terminal.png", alt: "Compiler output" },
+        { src: "https://raw.githubusercontent.com/example/compiler/main/demo.gif", alt: "Compiler recording" },
+      ] : [],
     }));
-    vi.stubGlobal("IntersectionObserver", class {
-      constructor(private callback: IntersectionObserverCallback) {}
-      observe(target: Element) {
-        if (target.hasAttribute("data-count")) {
-          this.callback([{ intersectionRatio: 1 } as IntersectionObserverEntry], this as unknown as IntersectionObserver);
-        }
-      }
-      disconnect() {}
-    });
-
-    readResult.mockResolvedValueOnce({
-      error: null,
-      data: [
-        { ...mockProjects[0], slug: "rainy-cityscape", title: "Rainy Cityscape" },
-        { ...mockProjects[1], slug: "bornomala", title: "BornoMala" },
-      ],
-    });
-    const page = await HomePage();
-    vi.useFakeTimers();
-    render(page);
-
-    const showcase = within(screen.getByRole("region", { name: "Selected work" }));
-    const advance = () => act(() => vi.advanceTimersByTime(12_000));
-    const selected = (project: string) => showcase.getByRole("button", { name: "Show " + project, pressed: true });
-
-    expect(selected("BornoMala")).toBeDefined();
-    advance();
-    expect(selected("Rainy Cityscape")).toBeDefined();
-    advance();
-    expect(selected("BornoMala")).toBeDefined();
-
-    fireEvent.click(showcase.getByRole("button", { name: "Show Rainy Cityscape" }));
-    advance();
-    expect(selected("Rainy Cityscape")).toBeDefined();
-
-    fireEvent.click(showcase.getByRole("button", { name: "Start automatic project switching" }));
-    advance();
-    expect(selected("BornoMala")).toBeDefined();
-
-    fireEvent.click(showcase.getByRole("button", { name: "Pause automatic project switching" }));
-    advance();
-    expect(selected("BornoMala")).toBeDefined();
-    expect(showcase.getByRole("button", { name: "Pause project preview" })).toBeDefined();
+    const component = await HomePage();
+    await act(async () => { render(component); });
+    const gallery = within(screen.getByRole("region", { name: "Projects" }));
+    expect(gallery.getByRole("img", { name: "Compiler output" })).toBeDefined();
+    expect(gallery.queryByRole("img", { name: "Compiler recording" })).toBeNull();
   });
 
   it("keeps the work index available when the project query fails", async () => {

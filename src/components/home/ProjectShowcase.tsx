@@ -1,220 +1,96 @@
 "use client";
 
 import { ArrowLeft, ArrowRight, ArrowUpRight, Pause, Play } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { ProjectPreview, motionQuery, subscribeToMotion, subscribeToVisibility, type PreviewMedia } from "./ProjectPreview";
 import styles from "@/app/home.module.css";
 
-export type ShowcaseProject = {
-  slug: string;
-  title: string;
-  summary: string | null;
-  poster: string;
-  clip: string;
-  alt: string;
-};
+type Slide = { id: string; title: string; slug: string; technologies: string[] | null; media: PreviewMedia };
 
-const motionQuery = "(prefers-reduced-motion: reduce)";
-const rotationDelay = 12_000;
-
-function subscribeToVisibility(update: () => void) {
-  document.addEventListener("visibilitychange", update);
-  return () => document.removeEventListener("visibilitychange", update);
-}
-
-function subscribeToMotion(update: () => void) {
-  const query = window.matchMedia(motionQuery);
-  query.addEventListener("change", update);
-  return () => query.removeEventListener("change", update);
-}
-
-export function ProjectShowcase({ projects }: { projects: ShowcaseProject[] }) {
-  const [index, setIndex] = useState(0);
-  const [rotationChoice, setRotationChoice] = useState<boolean | null>(null);
+export function ProjectShowcase({ slides }: { slides: Slide[] }) {
+  const [selection, setSelection] = useState({ index: 0, direction: 1 });
+  const [rotation, setRotation] = useState<boolean | null>(null);
   const [hovered, setHovered] = useState(false);
-  const [playChoice, setPlayChoice] = useState<boolean | null>(null);
   const [visible, setVisible] = useState(false);
-  const [readySlug, setReadySlug] = useState<string | null>(null);
-  const [failedSlug, setFailedSlug] = useState<string | null>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const rotationButton = useRef<HTMLButtonElement>(null);
-  const reducedMotion = useSyncExternalStore(
-    subscribeToMotion,
-    () => window.matchMedia(motionQuery).matches,
-    () => true,
-  );
-  const tabVisible = useSyncExternalStore(
-    subscribeToVisibility,
-    () => document.visibilityState !== "hidden",
-    () => false,
-  );
-  const canRotate = projects.length > 1;
-  const wantsRotation = rotationChoice ?? !reducedMotion;
-  const rotating = canRotate && wantsRotation && visible && tabVisible && !hovered;
-  const activeIndex = projects.length ? index % projects.length : 0;
-  const active = projects[activeIndex];
-  const wantsPlayback = playChoice ?? !reducedMotion;
-  const canPlay = !!active && failedSlug !== active.slug;
-  const showVideo = canPlay && wantsPlayback && visible;
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const reduced = useSyncExternalStore(subscribeToMotion, () => window.matchMedia(motionQuery).matches, () => true);
+  const tabVisible = useSyncExternalStore(subscribeToVisibility, () => document.visibilityState !== "hidden", () => false);
+  const count = slides.length;
+  const index = selection.index % count;
+  const active = slides[index];
+  const wantsRotation = rotation ?? !reduced;
+  const rotating = count > 1 && wantsRotation && visible && tabVisible && !hovered;
 
   useEffect(() => {
     if (!stage.current || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        const inView = entry.intersectionRatio >= 0.25;
-        setVisible(inView);
-        if (!inView) setReadySlug(null);
-      },
-      { threshold: 0.25 },
-    );
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting));
     observer.observe(stage.current);
     return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
     if (!rotating) return;
-    const timer = window.setTimeout(() => {
-      setReadySlug(null);
-      setIndex((current) => (current + 1) % projects.length);
-    }, rotationDelay);
+    const timer = window.setTimeout(() => setSelection({ index: (index + 1) % count, direction: 1 }), 12000);
     return () => window.clearTimeout(timer);
-  }, [activeIndex, projects.length, rotating]);
-
-  if (!active) return null;
-
-  function selectProject(position: number) {
-    setRotationChoice(false);
-    if (position === activeIndex) return;
-    setReadySlug(null);
-    setIndex(position);
-  }
+  }, [index, count, rotating]);
 
   function move(direction: number) {
-    selectProject((activeIndex + direction + projects.length) % projects.length);
+    setRotation(false);
+    setSelection({ index: (index + direction + count) % count, direction });
   }
 
   return (
-    <section
-      className={styles.showcase}
-      aria-labelledby="selected-work"
-      onPointerEnter={(event) => {
-        if (event.pointerType === "mouse") setHovered(true);
-      }}
-      onPointerLeave={(event) => {
-        if (event.pointerType === "mouse") setHovered(false);
-      }}
-      onFocusCapture={(event) => {
-        if (event.target !== rotationButton.current || rotationButton.current?.matches(":focus-visible")) {
-          setRotationChoice(false);
-        }
-      }}
-    >
-      <div className={styles.showcaseTop}>
-        <h2 id="selected-work">Selected work</h2>
-        <div className={styles.showcaseMeta}>
-          {canRotate && (
-            <button
-              ref={rotationButton}
-              type="button"
-              className={styles.rotationControl}
-              aria-label={wantsRotation ? "Pause automatic project switching" : "Start automatic project switching"}
-              onClick={() => setRotationChoice(!wantsRotation)}
-            >
-              {wantsRotation ? "Pause rotation" : "Start rotation"}
-            </button>
-          )}
-          <span>{String(activeIndex + 1).padStart(2, "0")} / {String(projects.length).padStart(2, "0")}</span>
+    <section className={styles.showcase} aria-labelledby="selected-work"
+      onPointerEnter={(event) => { if (event.pointerType === "mouse") setHovered(true); }}
+      onPointerLeave={(event) => { if (event.pointerType === "mouse") setHovered(false); }}
+      onFocusCapture={(event) => { if (event.target.matches(":focus-visible")) setRotation(false); }}>
+      <h2 id="selected-work" className="sr-only">Selected work</h2>
+      <div ref={stage} className={styles.showcaseStage} data-layered={count > 1}
+        onTouchStart={(event) => { const touch = event.touches[0]; swipeStart.current = { x: touch.clientX, y: touch.clientY }; }}
+        onTouchEnd={(event) => {
+          const start = swipeStart.current;
+          swipeStart.current = null;
+          if (!start || count < 2) return;
+          const touch = event.changedTouches[0];
+          const horizontal = touch.clientX - start.x;
+          if (Math.abs(horizontal) > 45 && Math.abs(horizontal) > Math.abs(touch.clientY - start.y)) move(horizontal < 0 ? 1 : -1);
+        }}>
+        <div className={styles.slideTrack}>
+          {slides.map((slide, position) => {
+            const depth = ((position - index) * selection.direction + count) % count;
+            return (
+              <div key={slide.id} className={styles.slide} data-depth={depth} data-direction={selection.direction}
+                aria-hidden={depth !== 0}>
+                {slide.media.still && <Image className={styles.slideStill} unoptimized fill sizes="50vw" alt=""
+                  src={slide.media.still.src} referrerPolicy="no-referrer" />}
+                {depth === 0 && (
+                  <ProjectPreview title={slide.title} technologies={slide.technologies ?? []} media={slide.media} priority />
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
-
-      <div className={styles.stage} ref={stage} data-count={projects.length}>
-        {projects.map((project, position) => {
-          const depth = (position - activeIndex + projects.length) % projects.length;
-          return (
-            <div
-              className={styles.preview}
-              data-depth={depth}
-              key={project.slug}
-              aria-hidden={depth !== 0}
-            >
-              <Image
-                unoptimized
-                src={project.poster}
-                alt={project.alt}
-                fill
-                sizes="(min-width: 48rem) 50vw, 100vw"
-                loading={position === 0 ? "eager" : "lazy"}
-              />
-              {depth === 0 && showVideo && (
-                <video
-                  key={project.slug}
-                  className={styles.clip}
-                  data-ready={readySlug === project.slug}
-                  src={project.clip}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  aria-hidden="true"
-                  onPlaying={() => setReadySlug(project.slug)}
-                  onError={() => setFailedSlug(project.slug)}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className={styles.showcaseBottom}>
-        <div className={styles.showcaseCaptions} aria-live={rotating ? "off" : "polite"} aria-atomic="true">
-          {projects.map((project) => (
-            <div key={project.slug} aria-hidden={project.slug !== active.slug}>
-              <h3>{project.title}</h3>
-              {project.summary && <p>{project.summary}</p>}
-            </div>
-          ))}
+      <div className={styles.showcaseCaption} aria-live={rotating ? "off" : "polite"}>
+        <div className={styles.showcaseTitles}>
+          {slides.map(({ id, title }) => <h3 key={id} aria-hidden={id !== active.id}>{title}</h3>)}
         </div>
-        <Link href={"/projects/" + active.slug} prefetch={false} className={styles.textLink}>
-          Read case study <ArrowUpRight size={16} aria-hidden="true" />
+        <Link href={"/projects/" + active.slug} className={styles.textLink}>
+          Read case study <ArrowUpRight size={17} aria-hidden="true" />
         </Link>
-        <div className={styles.controls}>
-          <button
-            type="button"
-            disabled={!canPlay}
-            aria-label={wantsPlayback ? "Pause project preview" : "Play project preview"}
-            onClick={() => {
-              setReadySlug(null);
-              setPlayChoice(!wantsPlayback);
-            }}
-          >
-            {wantsPlayback ? <Pause size={17} aria-hidden="true" /> : <Play size={17} aria-hidden="true" />}
-          </button>
-          {canRotate && (
-            <>
-              <button type="button" aria-label="Previous project" onClick={() => move(-1)}>
-                <ArrowLeft size={19} aria-hidden="true" />
-              </button>
-              <button type="button" aria-label="Next project" onClick={() => move(1)}>
-                <ArrowRight size={19} aria-hidden="true" />
-              </button>
-            </>
-          )}
-        </div>
       </div>
-      {canRotate && (
-        <div className={styles.projectPicker} role="group" aria-label="Choose a featured project">
-          {projects.map((project, position) => (
-            <button
-              key={project.slug}
-              type="button"
-              aria-label={"Show " + project.title}
-              aria-pressed={position === activeIndex}
-              onClick={() => selectProject(position)}
-            >
-              {String(position + 1).padStart(2, "0")}
-            </button>
-          ))}
+      {count > 1 && (
+        <div className={styles.slideControls} aria-label="Selected work controls">
+          <button type="button" aria-label="Previous project" onClick={() => move(-1)}><ArrowLeft size={17} /></button>
+          <span aria-label={`Project ${index + 1} of ${count}`}>{index + 1} / {count}</span>
+          <button type="button" aria-label="Next project" onClick={() => move(1)}><ArrowRight size={17} /></button>
+          <button type="button" aria-label={wantsRotation ? "Pause automatic project switching" : "Start automatic project switching"}
+            onClick={() => setRotation((choice) => !(choice ?? !reduced))}>
+            {wantsRotation ? <Pause size={15} /> : <Play size={15} />}
+          </button>
         </div>
       )}
     </section>

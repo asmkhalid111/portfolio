@@ -74,8 +74,8 @@ test("published changes in admin are reflected for anonymous visitors", async ({
 
   async function assertHidden() {
     await visitor.goto("/");
-    await expect(visitor.locator("#projects").getByRole("link", { name: publishedTitle, exact: true })).toHaveCount(0);
-    await expect(visitor.locator("#projects").getByRole("link", { name: draftTitle, exact: true })).toHaveCount(0);
+    await expect(visitor.locator("#projects").getByRole("link", { name: "Read case study: " + publishedTitle, exact: true })).toHaveCount(0);
+    await expect(visitor.locator("#projects").getByRole("link", { name: "Read case study: " + draftTitle, exact: true })).toHaveCount(0);
     await visitor.goto(publicPath);
     await expect(visitor.getByRole("heading", { name: "404", exact: true })).toBeVisible();
   }
@@ -110,7 +110,7 @@ test("published changes in admin are reflected for anonymous visitors", async ({
     await saveChanges.click();
     await expect(page).toHaveURL(/\/admin\/projects$/);
     await visitor.goto("/");
-    await expect(visitor.locator("#projects").getByRole("link", { name: publishedTitle, exact: true })).toHaveAttribute("href", publicPath);
+    await expect(visitor.locator("#projects").getByRole("link", { name: "Read case study: " + publishedTitle, exact: true })).toHaveAttribute("href", publicPath);
     await visitor.goto(publicPath);
     await expect(visitor.getByRole("heading", { level: 1, name: publishedTitle })).toBeVisible();
 
@@ -128,30 +128,50 @@ test("published changes in admin are reflected for anonymous visitors", async ({
   }
 });
 
-test("keeps the showcase frame and controls still when projects change", async ({ page }) => {
+test("keeps reduced-motion project cards clean and supports hero navigation", async ({ page }) => {
+  test.setTimeout(60_000);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
+  const gallery = page.getByRole("region", { name: "Projects" });
+  const lead = gallery.locator('article[data-lead="true"]');
+  await expect(lead.getByRole("link", { name: /BornoMala/ })).toHaveAttribute("href", "/projects/bornomala");
+  await expect(gallery.getByRole("heading", { name: "More projects" })).toHaveCount(0);
+  await expect(lead.getByRole("button")).toHaveCount(0);
+  await expect(lead.locator("video")).toHaveCount(0);
   const showcase = page.getByRole("region", { name: "Selected work" });
-  await expect(showcase).toBeVisible();
-  const next = showcase.getByRole("button", { name: "Next project" });
-  test.skip((await next.count()) === 0, "Requires at least two published projects with showcase media");
-  const firstTitle = await showcase.getByRole("heading", { level: 3 }).innerText();
-  const readLayout = () => showcase.evaluate((section) => {
-    const outer = section.getBoundingClientRect();
-    const preview = section.querySelector('[data-depth="0"]')!.getBoundingClientRect();
-    const control = section.querySelector('[aria-label="Next project"]')!.getBoundingClientRect();
-    return {
-      height: outer.height,
-      preview: [preview.x - outer.x, preview.y - outer.y, preview.width, preview.height],
-      control: [control.x - outer.x, control.y - outer.y],
-    };
-  });
-
-  const initial = await readLayout();
-  await next.click();
-  await expect(showcase.getByRole("heading", { level: 3 })).not.toHaveText(firstTitle);
-  expect(await readLayout()).toEqual(initial);
+  await showcase.getByRole("button", { name: "Next project" }).click();
+  await expect(showcase.getByRole("link", { name: "Read case study" })).toHaveAttribute("href", "/projects/stone-bridge-holdings");
   await showcase.getByRole("button", { name: "Previous project" }).click();
-  await expect(showcase.getByRole("heading", { level: 3 })).toHaveText(firstTitle);
-  expect(await readLayout()).toEqual(initial);
+  await expect(showcase.getByRole("link", { name: "Read case study" })).toHaveAttribute("href", "/projects/bornomala");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+    await page.evaluate(() => window.innerWidth)
+  );
+  const caseStudy = lead.getByRole("link", { name: /Read case study: BornoMala/ });
+  await caseStudy.scrollIntoViewIfNeeded();
+  await caseStudy.press("Enter");
+  await expect(page.getByRole("heading", { level: 1, name: /BornoMala/ })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("Featured Work", { exact: true })).toBeVisible();
+  await expect(page.getByText("Artifact Specimen:", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Full Technology Inventory" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ready to explore other projects?" })).toBeVisible();
+  await expect(page.locator("main video[controls]")).toHaveCount(0);
+  await page.locator("#back-to-projects-top").press("Enter");
+  await expect(page).toHaveURL(/\/#projects$/);
+  await expect(caseStudy).toBeVisible();
+});
+
+test("plays the desktop card preview only while hovered", async ({ page, isMobile }) => {
+  test.skip(isMobile, "Desktop hover interaction");
+  await page.goto("/#projects");
+  const card = page.locator("#project-bornomala");
+  const poster = card.getByRole("img", { name: /BornoMala phonetic sandbox/ });
+  await expect(poster).toBeVisible();
+  await expect(card.locator("video")).toHaveCount(0);
+  await poster.scrollIntoViewIfNeeded();
+  const before = await card.evaluate((element) => element.clientHeight);
+  await poster.hover();
+  await expect(card.locator('video[data-playing="true"]')).toBeVisible();
+  expect(await card.evaluate((element) => element.clientHeight)).toEqual(before);
+  await card.getByRole("link", { name: /Read case study: BornoMala/ }).hover();
+  await expect(card.locator("video")).toHaveCount(0);
 });
