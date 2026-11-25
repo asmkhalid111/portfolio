@@ -8,17 +8,14 @@ export function Footer() {
       <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-4 text-center sm:flex-row sm:px-6 sm:text-left">
         <div>
           <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-            Ashrafuzzaman Khalid &middot; Portfolio Foundation
+            Ashrafuzzaman Khalid
           </p>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            &copy; {CURRENT_YEAR}. Built with Next.js 16 (Active LTS) &amp; TypeScript.
+            &copy; {CURRENT_YEAR}
           </p>
         </div>
 
         <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-          <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 dark:bg-blue-950 dark:text-blue-300 dark:ring-blue-400/20">
-            M01 Deployed Shell
-          </span>
           <a
             href="https://github.com/asmkhalid111"
             target="_blank"

@@ -1,16 +1,20 @@
 import { ArrowDown, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
-import { ProjectShowcase, type ShowcaseProject } from "@/components/home/ProjectShowcase";
+import { Suspense, use } from "react";
+import { ProjectPreview, type PreviewMedia } from "@/components/home/ProjectPreview";
+import { ProjectShowcase } from "@/components/home/ProjectShowcase";
 import { HomeSection } from "@/components/home/HomeSection";
 import { createClient } from "@/lib/supabase/server";
 import styles from "./home.module.css";
+import { addReadmePreviews, heroProjectSlugs, projectPreview, projectIntro } from "@/lib/case-studies/project-preview";
+import { parseGitHubRepo } from "@/lib/github/sync";
+import { ProjectCardLink } from "@/components/home/ProjectCardLink";
 
 // Verified CV information from docs/CONTENT_INVENTORY.md
 const PROFILE = {
   name: "Ashrafuzzaman Khalid",
   location: "Dhaka, Bangladesh",
-  bio: "I study Computer Science and Engineering at Daffodil International University. My projects start with a problem I want to solve. I define the scope and technical direction, then use AI to help implement and verify the work.",
+  bio: "I study Computer Science and Engineering at Daffodil International University. I build tools around problems I care about, from typing Bangla offline to exploring architectural drawings on the web. I define the scope and technical direction, then use AI to help implement and verify the work.",
   githubUrl: "https://github.com/asmkhalid111",
   linkedinUrl: "https://www.linkedin.com/in/asmkhalid101/",
 };
@@ -51,42 +55,45 @@ const SKILL_GROUPS = [
   },
 ];
 
-const previews = [
-  { slug: "bornomala", file: "bornomala", alt: "BornoMala phonetic sandbox showing Bangla typing and word suggestions" },
-  { slug: "stone-bridge-holdings", file: "stone-bridge", liveUrl: "https://stonebridgeholdings-website.netlify.app", alt: "Stone Bridge Holdings homepage showing an architectural drawing in the website interface" },
-  { slug: "rainy-cityscape", file: "rainy-cityscape", alt: "Rainy Cityscape simulation showing illuminated buildings in the rain" },
-];
-
 export const instant = false;
+
+function ReadmePreview({ details, title, technologies }: {
+  details: Promise<PreviewMedia>;
+  title: string;
+  technologies: string[];
+}) {
+  return <ProjectPreview title={title} technologies={technologies} media={use(details)} />;
+}
 
 export default async function HomePage() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("projects")
-    .select("id, title, slug, summary, technologies, repository_url, live_demo_url, featured")
+    .select("id, title, slug, summary, technologies, repository_url, live_demo_url, featured, project_media(id, storage_path, alt_text, sort_order)")
     .eq("status", "published")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false });
-  const projects = error ? [] : data ?? [];
-  const selected = previews.flatMap((preview) => {
-    const project = projects.find((row) => row.slug === preview.slug)
-      ?? projects.find((row) => preview.liveUrl && row.live_demo_url?.replace(/\/$/, "") === preview.liveUrl);
-    if (!project) return [];
-
-    return [{
-      ...project,
-      poster: "/project-previews/" + preview.file + ".webp",
-      clip: "/project-previews/" + preview.file + ".webm",
-      alt: preview.alt,
-    } satisfies ShowcaseProject & typeof project];
+  const projects = (error ? [] : data ?? []).map((project) => ({
+    ...project,
+    media: projectPreview(supabase, project),
+  }));
+  const featured = projects.filter((project) => project.featured);
+  const lead = featured[0] ?? projects.find((project) => project.slug === "bornomala") ?? projects[0];
+  const gallery = lead ? [lead, ...projects.filter((project) => project !== lead)] : [];
+  const curated = heroProjectSlugs.flatMap((slug) => {
+    const project = projects.find((entry) => entry.slug === slug);
+    return project ? [project] : [];
   });
-
-  const illustrated = new Set(selected.map((project) => project.slug));
-  const moreProjects = projects.filter((project) => !illustrated.has(project.slug));
+  const showcase = [...new Set([
+    ...curated,
+    ...gallery.slice(0, 1),
+    ...featured.filter(({ media }) => media.still || media.animation),
+    ...gallery.filter(({ media }) => media.still || media.animation),
+  ])].slice(0, 3);
 
   return (
     <div className={styles.home}>
-      <div className={styles.hero} data-showcase={selected.length > 0}>
+      <div className={styles.hero} data-showcase={Boolean(lead)}>
         <section className={styles.intro} aria-labelledby="intro-heading">
           <p className={styles.location}>{PROFILE.location}</p>
           <div>
@@ -101,11 +108,8 @@ export default async function HomePage() {
               <Link href="#about" className={styles.textLink}>About me</Link>
             </div>
           </div>
-          <a className={styles.profileLink} href={PROFILE.githubUrl} target="_blank" rel="noopener noreferrer">
-            GitHub Profile <ArrowUpRight size={15} aria-hidden="true" />
-          </a>
         </section>
-        {selected.length > 0 && <ProjectShowcase projects={selected.map(({ slug, title, summary, poster, clip, alt }) => ({ slug, title, summary, poster, clip, alt }))} />}
+        {lead && <ProjectShowcase slides={showcase} />}
       </div>
 
       <HomeSection id="projects" className={styles.section}>
@@ -115,55 +119,35 @@ export default async function HomePage() {
         ) : projects.length === 0 ? (
           <p>No published projects yet.</p>
         ) : (
-          <>
-            {selected.length > 0 && (
-              <div className={styles.projectGallery}>
-                {selected.map((project) => (
-                  <article className={styles.feature} data-home-reveal="" key={project.slug} data-lead={project.slug === "bornomala"}>
-                    <Link href={"/projects/" + project.slug} className={styles.featureLink} aria-label={"Read the " + project.title + " case study"}>
-                      <div className={styles.featureMedia}>
-                        <Image src={project.poster} alt={project.alt} fill unoptimized sizes="(min-width: 48rem) 50vw, 100vw" />
-                      </div>
-                      <div className={styles.featureCaption}>
-                        <div>
-                          <h3>{project.title}</h3>
-                          {project.summary && <p>{project.summary}</p>}
-                        </div>
-                        <ArrowUpRight size={23} aria-hidden="true" />
-                      </div>
-                    </Link>
+          <div className={styles.projectGallery}>
+            {gallery.map((project) => {
+              const technologies = project.technologies ?? [];
+              const caption = projectIntro(project);
+              const preview = <ProjectPreview title={project.title} technologies={technologies} media={project.media} />;
+              const remote = project.repository_url && (!project.media.still || !project.media.animation)
+                && parseGitHubRepo(project.repository_url)
+                ? addReadmePreviews(project.repository_url, project.media, project.title)
+                : null;
+              return (
+                <article id={`project-${project.slug}`} className={styles.project} data-home-reveal="" key={project.id} data-lead={project === lead}>
+                  {remote ? (
+                    <Suspense fallback={preview}>
+                      <ReadmePreview details={remote} title={project.title} technologies={technologies} />
+                    </Suspense>
+                  ) : preview}
+                  <div className={styles.projectCopy}>
+                    <h3>{project.title}</h3>
+                    {caption && <p>{caption}</p>}
                     <div className={styles.projectLinks}>
-                      {project.repository_url && (
-                        <a href={project.repository_url} target="_blank" rel="noopener noreferrer">Source code</a>
-                      )}
-                      {project.live_demo_url && (
-                        <a href={project.live_demo_url} target="_blank" rel="noopener noreferrer">Live demo</a>
-                      )}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-            {moreProjects.length > 0 && (
-              <div className={styles.projectList}>
-                {selected.length > 0 && <h3>More projects</h3>}
-                {moreProjects.map((project) => (
-                  <article className={styles.project} data-home-reveal="" key={project.id}>
-                    <h3><Link href={"/projects/" + project.slug}>{project.title}</Link></h3>
-                    <div>
-                      <p>{project.summary}</p>
-                      {!!project.technologies?.length && <p className={styles.detail}>{project.technologies.join(" / ")}</p>}
-                    </div>
-                    <div className={styles.projectLinks}>
-                      <Link className={styles.textLink} href={"/projects/" + project.slug}>View case study</Link>
+                      <ProjectCardLink slug={project.slug} title={project.title} className={styles.cardAction} />
                       {project.repository_url && <a href={project.repository_url} target="_blank" rel="noopener noreferrer">Source code</a>}
                       {project.live_demo_url && <a href={project.live_demo_url} target="_blank" rel="noopener noreferrer">Live demo</a>}
                     </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         )}
       </HomeSection>
 
@@ -185,7 +169,7 @@ export default async function HomePage() {
           </div>
 
           <section id="skills" aria-labelledby="skills-heading" data-home-reveal="">
-            <h3 id="skills-heading">Technical Skills</h3>
+            <h3 id="skills-heading">How I work</h3>
             <dl>
               {SKILL_GROUPS.map((group) => (
                 <div key={group.category}>
@@ -200,9 +184,10 @@ export default async function HomePage() {
 
       <HomeSection id="contact" className={styles.section}>
         <h2 id="contact-heading" data-home-reveal="">Get in touch</h2>
+        <p className={styles.bio}>I’m open to early-career software roles and conversations about the projects here.</p>
         <div className={styles.actions} data-home-reveal="">
-          <a className={styles.textLink} href={PROFILE.githubUrl} target="_blank" rel="noopener noreferrer">GitHub <ArrowUpRight size={16} aria-hidden="true" /></a>
           <a className={styles.textLink} href={PROFILE.linkedinUrl} target="_blank" rel="noopener noreferrer">LinkedIn <ArrowUpRight size={16} aria-hidden="true" /></a>
+          <a className={styles.textLink} href={PROFILE.githubUrl} target="_blank" rel="noopener noreferrer">GitHub <ArrowUpRight size={16} aria-hidden="true" /></a>
         </div>
       </HomeSection>
     </div>
