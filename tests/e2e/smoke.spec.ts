@@ -65,24 +65,13 @@ test.describe("M01 Foundation Smoke & Accessibility Suite", () => {
     await expect(page.locator("text=Clean Later")).toBeVisible();
   });
 
-  test("confirms Tailwind CSS styles are compiled and applied in production build", async ({ page }) => {
+  test("shows the primary work action and sticky navigation", async ({ page }) => {
     await page.goto("/");
-
-    // Verify computed styles on hero h1 element (font-extrabold -> font-weight: 800)
-    const h1 = page.locator("h1");
-    await expect(h1).toHaveCSS("font-weight", "800");
-
-    // Verify computed styles on hero primary CTA button (Tailwind classes: flex, rounded-lg -> 8px border-radius)
-    const heroGithubBtn = page.locator("main").getByRole("link", { name: "GitHub Profile", exact: true });
-    await expect(heroGithubBtn).toHaveCSS("display", "flex");
-    await expect(heroGithubBtn).toHaveCSS("border-radius", "8px");
-
-    // Verify Tailwind v4 wide-gamut / modern color compilation on button background
-    const btnBg = await heroGithubBtn.evaluate((el) => window.getComputedStyle(el).backgroundColor);
-    expect(btnBg).toMatch(/^(lab|oklch|rgb)/);
-
-    // Verify computed style for header (sticky positioning)
-    const header = page.locator("header");
-    await expect(header).toHaveCSS("position", "sticky");
+    const workLink = page.locator("main").getByRole("link", { name: "Explore work" });
+    await expect(workLink).toBeVisible();
+    await expect(workLink).toHaveAttribute("href", "#projects");
+    await expect(page.locator("header")).toHaveCSS("position", "sticky");
+    await workLink.click();
+    await expect(page).toHaveURL(/#projects$/);
   });
 });

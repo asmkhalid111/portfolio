@@ -1,6 +1,11 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import HomePage from "@/app/page";
+
+const { readResult, filterStatus } = vi.hoisted(() => ({
+  readResult: vi.fn(),
+  filterStatus: vi.fn(),
+}));
 
 const mockProjects = [
   {
@@ -29,12 +34,9 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
     from: vi.fn(() => ({
       select: vi.fn(() => ({
-        eq: vi.fn(() => ({
+        eq: filterStatus.mockImplementation(() => ({
           order: vi.fn(() => ({
-            order: vi.fn(async () => ({
-              data: mockProjects,
-              error: null,
-            })),
+            order: readResult,
           })),
         })),
       })),
@@ -42,7 +44,22 @@ vi.mock("@/lib/supabase/server", () => ({
   })),
 }));
 
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+});
+
 describe("HomePage Component (Unit Test)", () => {
+  beforeEach(() => {
+    readResult.mockResolvedValue({ data: mockProjects, error: null });
+    vi.stubGlobal("matchMedia", () => ({
+      matches: true,
+      addEventListener() {},
+      removeEventListener() {},
+    }));
+  });
   it("renders the primary heading with the owner name and headline", async () => {
     const Component = await HomePage();
     render(Component);
@@ -51,18 +68,27 @@ describe("HomePage Component (Unit Test)", () => {
     expect(heading).toBeDefined();
     expect(heading.textContent).toContain("Ashrafuzzaman Khalid");
     expect(
-      screen.getByText(/Computer Science & Engineering Student/i)
+      screen.getByText(/CSE student building software/i)
     ).toBeDefined();
   });
 
-  it("renders verified CV sections (Education, Experience, Skills, Contact)", async () => {
+  it("renders verified CV sections (Education, Skills and Contact)", async () => {
     const Component = await HomePage();
     render(Component);
 
     expect(screen.getByRole("heading", { name: "Education" })).toBeDefined();
-    expect(screen.getByText("Daffodil International University")).toBeDefined();
-    expect(screen.getByRole("heading", { name: "Work Experience" })).toBeDefined();
-    expect(screen.getByText("Codveda Technologies")).toBeDefined();
+    const education = within(screen.getByRole("region", { name: "Education" }));
+    expect(education.getAllByRole("heading", { level: 4 }).map((heading) => heading.textContent)).toEqual([
+      "Daffodil International University",
+      "Milestone College",
+      "Saint Nicholas High School",
+    ]);
+    expect(education.getByText("Higher Secondary Certificate (HSC), Science")).toBeDefined();
+    expect(education.getByText("2021 / GPA: 5.00 / 5.00")).toBeDefined();
+    expect(education.getByText("Secondary School Certificate (SSC), Science")).toBeDefined();
+    expect(education.getByText("2019 / GPA: 4.89 / 5.00")).toBeDefined();
+    expect(screen.queryByRole("heading", { name: "Work Experience" })).toBeNull();
+    expect(screen.getByText("AI-assisted development")).toBeDefined();
     expect(screen.getByRole("heading", { name: /Technical Skills/i })).toBeDefined();
     expect(screen.getByRole("heading", { name: /Get in Touch/i })).toBeDefined();
   });
@@ -71,9 +97,96 @@ describe("HomePage Component (Unit Test)", () => {
     const Component = await HomePage();
     render(Component);
 
-    expect(screen.getByRole("heading", { name: "Featured Projects" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Projects" })).toBeDefined();
+    expect(filterStatus).toHaveBeenCalledWith("status", "published");
     expect(screen.getByText("Web-LAN-Chat")).toBeDefined();
     expect(screen.getByText("BanglaScript Compiler")).toBeDefined();
+  });
+
+  it("leads with BornoMala and only includes preview projects returned by the published query", async () => {
+    readResult.mockResolvedValueOnce({
+      error: null,
+      data: [
+        { ...mockProjects[0], slug: "rainy-cityscape", title: "Rainy Cityscape" },
+        { ...mockProjects[1], slug: "bornomala", title: "BornoMala" },
+      ],
+    });
+    render(await HomePage());
+
+    const showcase = within(screen.getByRole("region", { name: "Selected work" }));
+    expect(showcase.getByText("01 / 02")).toBeDefined();
+    expect(showcase.getByRole("link", { name: "Read case study" }).getAttribute("href")).toBe("/projects/bornomala");
+    expect(screen.queryByText("Stone Bridge Holdings")).toBeNull();
+    const projectGallery = within(screen.getByRole("region", { name: "Projects" }));
+    expect(projectGallery.getByRole("img", { name: /BornoMala/ })).toBeDefined();
+    expect(projectGallery.getByRole("link", { name: "Read the BornoMala case study" }).getAttribute("href")).toBe("/projects/bornomala");
+    expect(showcase.getByRole("button", { name: "Play project preview" })).toBeDefined();
+    expect(showcase.getByRole("button", { name: "Start automatic project switching" })).toBeDefined();
+    fireEvent.click(showcase.getByRole("button", { name: "Next project" }));
+    expect(showcase.getByText("02 / 02")).toBeDefined();
+    expect(showcase.getByRole("link", { name: "Read case study" }).getAttribute("href")).toBe("/projects/rainy-cityscape");
+    fireEvent.click(showcase.getByRole("button", { name: "Previous project" }));
+    expect(showcase.getByText("01 / 02")).toBeDefined();
+  });
+
+  it("rotates visible projects and pauses when a project is picked or a rotation stop is requested", async () => {
+    vi.stubGlobal("matchMedia", () => ({
+      matches: false,
+      addEventListener() {},
+      removeEventListener() {},
+    }));
+    vi.stubGlobal("IntersectionObserver", class {
+      constructor(private callback: IntersectionObserverCallback) {}
+      observe(target: Element) {
+        if (target.hasAttribute("data-count")) {
+          this.callback([{ intersectionRatio: 1 } as IntersectionObserverEntry], this as unknown as IntersectionObserver);
+        }
+      }
+      disconnect() {}
+    });
+
+    readResult.mockResolvedValueOnce({
+      error: null,
+      data: [
+        { ...mockProjects[0], slug: "rainy-cityscape", title: "Rainy Cityscape" },
+        { ...mockProjects[1], slug: "bornomala", title: "BornoMala" },
+      ],
+    });
+    const page = await HomePage();
+    vi.useFakeTimers();
+    render(page);
+
+    const showcase = within(screen.getByRole("region", { name: "Selected work" }));
+    const advance = () => act(() => vi.advanceTimersByTime(12_000));
+    const selected = (project: string) => showcase.getByRole("button", { name: "Show " + project, pressed: true });
+
+    expect(selected("BornoMala")).toBeDefined();
+    advance();
+    expect(selected("Rainy Cityscape")).toBeDefined();
+    advance();
+    expect(selected("BornoMala")).toBeDefined();
+
+    fireEvent.click(showcase.getByRole("button", { name: "Show Rainy Cityscape" }));
+    advance();
+    expect(selected("Rainy Cityscape")).toBeDefined();
+
+    fireEvent.click(showcase.getByRole("button", { name: "Start automatic project switching" }));
+    advance();
+    expect(selected("BornoMala")).toBeDefined();
+
+    fireEvent.click(showcase.getByRole("button", { name: "Pause automatic project switching" }));
+    advance();
+    expect(selected("BornoMala")).toBeDefined();
+    expect(showcase.getByRole("button", { name: "Pause project preview" })).toBeDefined();
+  });
+
+  it("keeps the work index available when the project query fails", async () => {
+    readResult.mockResolvedValueOnce({ data: null, error: { message: "offline" } });
+    render(await HomePage());
+
+    expect(screen.queryByRole("region", { name: "Selected work" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Explore work" }).getAttribute("href")).toBe("#projects");
+    expect(screen.getByText("Unable to load portfolio projects at this time.")).toBeDefined();
   });
 
   it("verifies sensitive private information is strictly absent from DOM", async () => {

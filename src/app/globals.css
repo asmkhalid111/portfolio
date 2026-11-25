@@ -1,24 +1,49 @@
 @import "tailwindcss";
 
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(html:not([data-theme]), html:not([data-theme]) *) {
+      @slot;
+    }
+  }
+}
+
 :root {
-  --canvas: #fafafa;
-  --surface: #ffffff;
-  --border: #e5e7eb;
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
+  color-scheme: light;
+  --canvas: light-dark(#fafafa, #09090b);
+  --surface: light-dark(#ffffff, #121215);
+  --border: light-dark(#e5e7eb, #27272a);
+  --text-primary: light-dark(#111827, #f4f4f5);
+  --text-secondary: light-dark(#4b5563, #a1a1aa);
+  --accent: light-dark(#2563eb, #3b82f6);
+  --accent-hover: light-dark(#1d4ed8, #60a5fa);
+  --home-ink: light-dark(#141829, #eef1fc);
+  --home-muted: light-dark(#4b536d, #b5c0d9);
+  --home-paper: light-dark(#f2f4fa, #1b2133);
+  --home-line: light-dark(#cbd1e3, #48536f);
+  --home-cta: light-dark(#3347b4, #aebcff);
+  --home-cta-ink: light-dark(#fff, #131d4f);
+  --home-stage: light-dark(#dce5f6, #10172b);
+  --home-media: light-dark(#192442, #10172b);
+  --home-stage-ink: light-dark(#172440, #f7f8ff);
+  --home-stage-muted: light-dark(#3d4b69, #c3cde7);
+  --home-stage-line: light-dark(#687b9f, #7482a6);
+  --home-stage-frame: #8797be;
+  --home-display: Georgia, "Times New Roman", serif;
+  --home-stage-focus: light-dark(#293c9e, #becaff);
+  --home-focus: light-dark(#3347b4, #becaff);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --canvas: #09090b;
-    --surface: #121215;
-    --border: #27272a;
-    --text-primary: #f4f4f5;
-    --text-secondary: #a1a1aa;
-    --accent: #3b82f6;
-    --accent-hover: #60a5fa;
+  :root:not([data-theme]) {
+    color-scheme: dark;
   }
 }
 
@@ -35,4 +60,10 @@ body {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.scroll-smooth {
+    scroll-behavior: auto;
+  }
 }
